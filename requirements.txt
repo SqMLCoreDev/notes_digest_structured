@@ -1,0 +1,31 @@
+# Core Framework
+fastapi>=0.104.0,<0.105.0
+pydantic>=2.5.0,<3.0.0
+mangum>=0.17.0
+uvicorn>=0.24.0
+
+# AWS
+boto3>=1.34.0
+aioboto3>=12.0.0
+
+# Data Processing
+pandas>=2.1.0,<3.0.0
+numpy>=1.26.0,<2.0.0
+
+# Elasticsearch
+elasticsearch[async]>=7.17.0,<8.0.0
+
+# AI/ML
+tiktoken==0.7.0
+
+# Utilities
+python-dotenv>=1.0.0
+python-dateutil>=2.8.0
+requests>=2.31.0
+multiprocess>=0.70.0
+urllib3>=1.26.0
+beautifulsoup4
+
+# Testing
+pytest>=7.0.0
+hypothesis>=6.0.0
