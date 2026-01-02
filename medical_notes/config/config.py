@@ -86,19 +86,19 @@ ENABLE_DATA_FLATTENING = os.getenv("ENABLE_DATA_FLATTENING", "true").lower() in 
 # ============================================================================
 
 # Maximum number of notes to process concurrently (default: 5)
-MAX_CONCURRENT_NOTES = int(os.getenv("MAX_CONCURRENT_NOTES", "5"))
+MAX_CONCURRENT_NOTES = int(os.getenv("MAX_CONCURRENT_NOTES", "20"))
 
 # Maximum number of jobs in the queue before rejecting new requests (default: 20)
-MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "20"))
+MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "100"))
 
 # Timeout for individual note processing in seconds (default: 600 = 10 minutes)
-NOTE_PROCESSING_TIMEOUT = int(os.getenv("NOTE_PROCESSING_TIMEOUT", "600"))
+NOTE_PROCESSING_TIMEOUT = int(os.getenv("NOTE_PROCESSING_TIMEOUT", "1200"))
 
 # AWS Bedrock rate limiting - requests per second (default: 10)
-BEDROCK_RATE_LIMIT_RPS = int(os.getenv("BEDROCK_RATE_LIMIT_RPS", "10"))
+BEDROCK_RATE_LIMIT_RPS = int(os.getenv("BEDROCK_RATE_LIMIT_RPS", "50"))
 
 # Elasticsearch bulk operation batch size (default: 100)
-ES_BULK_BATCH_SIZE = int(os.getenv("ES_BULK_BATCH_SIZE", "100"))
+ES_BULK_BATCH_SIZE = int(os.getenv("ES_BULK_BATCH_SIZE", "200"))
 
 # ============================================================================
 # VALIDATION FUNCTIONS
