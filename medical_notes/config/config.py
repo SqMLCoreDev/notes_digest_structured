@@ -86,7 +86,7 @@ ENABLE_DATA_FLATTENING = os.getenv("ENABLE_DATA_FLATTENING", "true").lower() in 
 # ============================================================================
 
 # Maximum number of notes to process concurrently (default: 5)
-MAX_CONCURRENT_NOTES = int(os.getenv("MAX_CONCURRENT_NOTES", "20"))
+MAX_CONCURRENT_NOTES = int(os.getenv("MAX_CONCURRENT_NOTES", "10"))
 
 # Maximum number of jobs in the queue before rejecting new requests (default: 20)
 MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "100"))
@@ -99,6 +99,28 @@ BEDROCK_RATE_LIMIT_RPS = int(os.getenv("BEDROCK_RATE_LIMIT_RPS", "50"))
 
 # Elasticsearch bulk operation batch size (default: 100)
 ES_BULK_BATCH_SIZE = int(os.getenv("ES_BULK_BATCH_SIZE", "200"))
+
+# ============================================================================
+# EMBEDDINGS CONFIGURATION
+# ============================================================================
+
+# PostgreSQL Vector Database Configuration
+VECTOR_DB_CONNECTION = os.getenv("VECTOR_DB_CONNECTION", "postgresql+psycopg://postgres:CuRWdjwS2U8W9@127.0.0.1:5437/squaremlqa")
+VECTOR_DB_COLLECTION_NAME = os.getenv("VECTOR_DB_COLLECTION_NAME", "medical_notes_embeddings")
+
+# Embeddings Model Configuration
+EMBEDDINGS_MODEL_ID = os.getenv("EMBEDDINGS_MODEL_ID", "amazon.titan-embed-text-v2:0")
+
+# Text Chunking Configuration
+EMBEDDINGS_CHUNK_SIZE = int(os.getenv("EMBEDDINGS_CHUNK_SIZE", "300"))
+EMBEDDINGS_CHUNK_OVERLAP = int(os.getenv("EMBEDDINGS_CHUNK_OVERLAP", "50"))
+
+# Retry Configuration for Embeddings
+EMBEDDINGS_MAX_RETRIES = int(os.getenv("EMBEDDINGS_MAX_RETRIES", "3"))
+EMBEDDINGS_RETRY_DELAY = float(os.getenv("EMBEDDINGS_RETRY_DELAY", "1.0"))
+
+# Enable/disable embeddings processing (default: True)
+ENABLE_EMBEDDINGS_PROCESSING = os.getenv("ENABLE_EMBEDDINGS_PROCESSING", "true").lower() in ("true", "1", "yes", "on")
 
 # ============================================================================
 # VALIDATION FUNCTIONS
@@ -220,6 +242,38 @@ def validate_api_config():
             "\n".join(f"  - {error}" for error in errors)
         )
 
+def validate_embeddings_config():
+    """
+    Validate embeddings configuration.
+    Raises ValueError if required embeddings config is missing or invalid.
+    """
+    errors = []
+    
+    if not VECTOR_DB_CONNECTION:
+        errors.append("VECTOR_DB_CONNECTION is required but not set")
+    
+    if not VECTOR_DB_COLLECTION_NAME:
+        errors.append("VECTOR_DB_COLLECTION_NAME is required but not set")
+    
+    if not EMBEDDINGS_MODEL_ID:
+        errors.append("EMBEDDINGS_MODEL_ID is required but not set")
+    
+    # Validate chunk size parameters
+    if EMBEDDINGS_CHUNK_SIZE <= 0:
+        errors.append(f"EMBEDDINGS_CHUNK_SIZE must be positive, got: {EMBEDDINGS_CHUNK_SIZE}")
+    
+    if EMBEDDINGS_CHUNK_OVERLAP < 0:
+        errors.append(f"EMBEDDINGS_CHUNK_OVERLAP must be non-negative, got: {EMBEDDINGS_CHUNK_OVERLAP}")
+    
+    if EMBEDDINGS_CHUNK_OVERLAP >= EMBEDDINGS_CHUNK_SIZE:
+        errors.append(f"EMBEDDINGS_CHUNK_OVERLAP ({EMBEDDINGS_CHUNK_OVERLAP}) must be less than EMBEDDINGS_CHUNK_SIZE ({EMBEDDINGS_CHUNK_SIZE})")
+    
+    if errors:
+        raise ValueError(
+            f"Embeddings configuration errors:\n" + 
+            "\n".join(f"  - {error}" for error in errors)
+        )
+
 def validate_config():
     """
     Validate that all required configuration variables are set.
@@ -245,6 +299,11 @@ def validate_config():
     
     try:
         validate_api_config()
+    except ValueError as e:
+        errors.append(str(e))
+    
+    try:
+        validate_embeddings_config()
     except ValueError as e:
         errors.append(str(e))
     
@@ -308,6 +367,16 @@ def get_masked_config_summary() -> Dict[str, Any]:
             "note_processing_timeout": NOTE_PROCESSING_TIMEOUT,
             "bedrock_rate_limit_rps": BEDROCK_RATE_LIMIT_RPS,
             "es_bulk_batch_size": ES_BULK_BATCH_SIZE,
+        },
+        "embeddings": {
+            "vector_db_connection": _mask_sensitive_value(VECTOR_DB_CONNECTION) if VECTOR_DB_CONNECTION else "NOT_SET",
+            "collection_name": VECTOR_DB_COLLECTION_NAME,
+            "model_id": EMBEDDINGS_MODEL_ID,
+            "chunk_size": EMBEDDINGS_CHUNK_SIZE,
+            "chunk_overlap": EMBEDDINGS_CHUNK_OVERLAP,
+            "max_retries": EMBEDDINGS_MAX_RETRIES,
+            "retry_delay": EMBEDDINGS_RETRY_DELAY,
+            "enabled": ENABLE_EMBEDDINGS_PROCESSING,
         }
     }
 

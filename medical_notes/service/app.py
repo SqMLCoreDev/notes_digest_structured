@@ -82,10 +82,12 @@ app = FastAPI(
 from medical_notes.routes.process_routes import router as process_router
 from medical_notes.routes.status_routes import router as status_router
 from medical_notes.routes.debug_routes import router as debug_router
+from medical_notes.routes.embeddings_routes import router as embeddings_router
 
 app.include_router(process_router)
 app.include_router(status_router)
 app.include_router(debug_router)
+app.include_router(embeddings_router)
 
 
 # Pydantic models moved to routes/process_routes.py
@@ -968,7 +970,37 @@ async def process_note_with_tracking(job_id: str, note_id: str):
             add_log(job_id, "submit_tracking", "completed", 
                     f"Submit tracking updated (submitDateTime: {submit_datetime})")
         
-        # Stage 13: Update final status
+        # Stage 13: Generate Embeddings (After successful processing)
+        current_stage = "embeddings_generation"
+        
+        # Import embeddings configuration
+        from medical_notes.config.config import ENABLE_EMBEDDINGS_PROCESSING
+        
+        if ENABLE_EMBEDDINGS_PROCESSING:
+            try:
+                add_log(job_id, "embeddings_generation", "in_progress", 
+                        f"Generating embeddings for successfully processed noteId '{note_id}'")
+                
+                from medical_notes.service.embeddings import process_note_embeddings, EmbeddingsServiceError
+                
+                embeddings_result = process_note_embeddings(note_id)
+                
+                add_log(job_id, "embeddings_generation", "completed", 
+                        f"Embeddings generated successfully: {embeddings_result['chunks_processed']} chunks processed in {embeddings_result['processing_time_seconds']} seconds")
+                
+            except EmbeddingsServiceError as embeddings_error:
+                # Log embeddings failure but don't fail the entire process
+                add_log(job_id, "embeddings_generation", "warning", 
+                        f"Embeddings generation failed: {str(embeddings_error)} (continuing with main processing)")
+            except Exception as embeddings_error:
+                # Log unexpected embeddings errors but don't fail the entire process
+                add_log(job_id, "embeddings_generation", "warning", 
+                        f"Unexpected embeddings error: {str(embeddings_error)} (continuing with main processing)")
+        else:
+            add_log(job_id, "embeddings_generation", "skipped", 
+                    "Embeddings processing is disabled in configuration")
+        
+        # Stage 14: Update final status
         current_stage = "final_status_update"
         try:
             from medical_notes.repository.elastic_search import update_status_precise
