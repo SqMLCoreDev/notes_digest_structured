@@ -86,7 +86,7 @@ ENABLE_DATA_FLATTENING = os.getenv("ENABLE_DATA_FLATTENING", "true").lower() in 
 # ============================================================================
 
 # Maximum number of notes to process concurrently (default: 5)
-MAX_CONCURRENT_NOTES = int(os.getenv("MAX_CONCURRENT_NOTES", "20"))
+MAX_CONCURRENT_NOTES = int(os.getenv("MAX_CONCURRENT_NOTES", "10"))
 
 # Maximum number of jobs in the queue before rejecting new requests (default: 20)
 MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "100"))
