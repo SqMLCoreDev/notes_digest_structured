@@ -181,13 +181,6 @@ class EmbeddingsService:
             # Prepend metadata to content
             enhanced_content = f"{metadata_info}\n{chunk.page_content}"
             
-            # Add chunk-specific metadata
-            chunk.metadata.update({
-                "chunk_index": i,
-                "total_chunks": len(chunks),
-                "chunk_size": len(chunk.page_content)
-            })
-            
             # Update content
             chunk.page_content = enhanced_content
             enhanced_chunks.append(chunk)

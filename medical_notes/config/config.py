@@ -112,8 +112,8 @@ VECTOR_DB_COLLECTION_NAME = os.getenv("VECTOR_DB_COLLECTION_NAME", "medical_note
 EMBEDDINGS_MODEL_ID = os.getenv("EMBEDDINGS_MODEL_ID", "amazon.titan-embed-text-v2:0")
 
 # Text Chunking Configuration
-EMBEDDINGS_CHUNK_SIZE = int(os.getenv("EMBEDDINGS_CHUNK_SIZE", "300"))
-EMBEDDINGS_CHUNK_OVERLAP = int(os.getenv("EMBEDDINGS_CHUNK_OVERLAP", "50"))
+EMBEDDINGS_CHUNK_SIZE = int(os.getenv("EMBEDDINGS_CHUNK_SIZE", "2000"))
+EMBEDDINGS_CHUNK_OVERLAP = int(os.getenv("EMBEDDINGS_CHUNK_OVERLAP", "300"))
 
 # Retry Configuration for Embeddings
 EMBEDDINGS_MAX_RETRIES = int(os.getenv("EMBEDDINGS_MAX_RETRIES", "3"))
