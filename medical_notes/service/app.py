@@ -64,11 +64,22 @@ async def lifespan(app: FastAPI):
     job_manager = get_job_manager()
     rate_limiter = get_bedrock_rate_limiter()
     
+    # Initialize background embeddings manager
+    from medical_notes.service.background_embeddings_manager import start_embeddings_manager
+    start_embeddings_manager()
+    
     print(f"📊 Concurrency settings: Max workers: {MAX_CONCURRENT_NOTES}, Max queue: {MAX_QUEUE_SIZE}")
+    print(f"🔗 Embeddings: Background processing enabled with queue management")
     
     yield
     
     print("👋 Medical Notes API shutting down...")
+    
+    # Shutdown embeddings manager first
+    from medical_notes.service.background_embeddings_manager import stop_embeddings_manager
+    stop_embeddings_manager()
+    
+    # Then shutdown job manager
     shutdown_job_manager()
 
 app = FastAPI(
@@ -83,11 +94,13 @@ from medical_notes.routes.process_routes import router as process_router
 from medical_notes.routes.status_routes import router as status_router
 from medical_notes.routes.debug_routes import router as debug_router
 from medical_notes.routes.embeddings_routes import router as embeddings_router
+from medical_notes.routes.embeddings_status_routes import router as embeddings_status_router
 
 app.include_router(process_router)
 app.include_router(status_router)
 app.include_router(debug_router)
 app.include_router(embeddings_router)
+app.include_router(embeddings_status_router)
 
 
 # Pydantic models moved to routes/process_routes.py
@@ -201,6 +214,20 @@ def push_failed_record_to_processed_notes(job_id: str, note_id: str, note_data: 
         
         add_log(job_id, "push_failed_record", "completed", 
                 f"Failed record pushed with noteId '{note_id}', composite_key '{composite_key}', processingIssues: {processing_issues_str}")
+        
+        # Queue embeddings for failed processing (if enabled)
+        try:
+            from medical_notes.config.config import ENABLE_EMBEDDINGS_PROCESSING
+            if ENABLE_EMBEDDINGS_PROCESSING:
+                from medical_notes.service.background_embeddings_manager import queue_note_for_embeddings
+                
+                # Queue with priority=True for failed processing cases
+                embeddings_task_id = queue_note_for_embeddings(note_id, priority=True)
+                add_log(job_id, "embeddings_queueing_failed", "completed", 
+                        f"Embeddings queued for failed processing (priority): task_id={embeddings_task_id}")
+        except Exception as embeddings_queue_error:
+            add_log(job_id, "embeddings_queueing_failed", "warning", 
+                    f"Failed to queue embeddings for failed processing: {str(embeddings_queue_error)}")
         
         return True
         
@@ -970,34 +997,31 @@ async def process_note_with_tracking(job_id: str, note_id: str):
             add_log(job_id, "submit_tracking", "completed", 
                     f"Submit tracking updated (submitDateTime: {submit_datetime})")
         
-        # Stage 13: Generate Embeddings (After successful processing)
-        current_stage = "embeddings_generation"
+        # Stage 13: Queue Embeddings for Background Processing
+        current_stage = "embeddings_queueing"
         
         # Import embeddings configuration
         from medical_notes.config.config import ENABLE_EMBEDDINGS_PROCESSING
         
         if ENABLE_EMBEDDINGS_PROCESSING:
             try:
-                add_log(job_id, "embeddings_generation", "in_progress", 
-                        f"Generating embeddings for successfully processed noteId '{note_id}'")
+                add_log(job_id, "embeddings_queueing", "in_progress", 
+                        f"Queueing embeddings for background processing for noteId '{note_id}'")
                 
-                from medical_notes.service.embeddings import process_note_embeddings, EmbeddingsServiceError
+                from medical_notes.service.background_embeddings_manager import queue_note_for_embeddings
                 
-                embeddings_result = process_note_embeddings(note_id)
+                # Queue embeddings task for background processing (not priority since processing succeeded)
+                embeddings_task_id = queue_note_for_embeddings(note_id, priority=False)
                 
-                add_log(job_id, "embeddings_generation", "completed", 
-                        f"Embeddings generated successfully: {embeddings_result['chunks_processed']} chunks processed in {embeddings_result['processing_time_seconds']} seconds")
+                add_log(job_id, "embeddings_queueing", "completed", 
+                        f"Embeddings queued successfully for background processing: task_id={embeddings_task_id}")
                 
-            except EmbeddingsServiceError as embeddings_error:
-                # Log embeddings failure but don't fail the entire process
-                add_log(job_id, "embeddings_generation", "warning", 
-                        f"Embeddings generation failed: {str(embeddings_error)} (continuing with main processing)")
             except Exception as embeddings_error:
-                # Log unexpected embeddings errors but don't fail the entire process
-                add_log(job_id, "embeddings_generation", "warning", 
-                        f"Unexpected embeddings error: {str(embeddings_error)} (continuing with main processing)")
+                # Log embeddings queueing failure but don't fail the entire process
+                add_log(job_id, "embeddings_queueing", "warning", 
+                        f"Failed to queue embeddings for background processing: {str(embeddings_error)} (continuing with main processing)")
         else:
-            add_log(job_id, "embeddings_generation", "skipped", 
+            add_log(job_id, "embeddings_queueing", "skipped", 
                     "Embeddings processing is disabled in configuration")
         
         # Stage 14: Update final status
@@ -1101,6 +1125,20 @@ async def process_note_with_tracking(job_id: str, note_id: str):
         except Exception as timestamp_error:
             add_log(job_id, "timestamp_tracking", "warning", 
                     f"Failed to record processing end timestamp: {str(timestamp_error)}")
+        
+        # Queue embeddings for failed processing (if enabled and note_id is available)
+        try:
+            from medical_notes.config.config import ENABLE_EMBEDDINGS_PROCESSING
+            if ENABLE_EMBEDDINGS_PROCESSING and 'note_id' in locals():
+                from medical_notes.service.background_embeddings_manager import queue_note_for_embeddings
+                
+                # Queue with priority=True for failed processing cases
+                embeddings_task_id = queue_note_for_embeddings(note_id, priority=True)
+                add_log(job_id, "embeddings_queueing_failed", "completed", 
+                        f"Embeddings queued for failed processing (priority): task_id={embeddings_task_id}")
+        except Exception as embeddings_queue_error:
+            add_log(job_id, "embeddings_queueing_failed", "warning", 
+                    f"Failed to queue embeddings for failed processing: {str(embeddings_queue_error)}")
         
         import traceback
         traceback.print_exc()

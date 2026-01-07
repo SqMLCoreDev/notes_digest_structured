@@ -123,6 +123,19 @@ EMBEDDINGS_RETRY_DELAY = float(os.getenv("EMBEDDINGS_RETRY_DELAY", "1.0"))
 ENABLE_EMBEDDINGS_PROCESSING = os.getenv("ENABLE_EMBEDDINGS_PROCESSING", "true").lower() in ("true", "1", "yes", "on")
 
 # ============================================================================
+# BACKGROUND EMBEDDINGS CONFIGURATION
+# ============================================================================
+
+# Maximum number of embeddings workers (default: 2)
+MAX_EMBEDDINGS_WORKERS = int(os.getenv("MAX_EMBEDDINGS_WORKERS", "10"))
+
+# Maximum number of embeddings tasks in the queue (default: 100)
+EMBEDDINGS_QUEUE_SIZE = int(os.getenv("EMBEDDINGS_QUEUE_SIZE", "20"))
+
+# Timeout for individual embeddings processing in seconds (default: 300 = 5 minutes)
+EMBEDDINGS_PROCESSING_TIMEOUT = int(os.getenv("EMBEDDINGS_PROCESSING_TIMEOUT", "300"))
+
+# ============================================================================
 # VALIDATION FUNCTIONS
 # ============================================================================
 
@@ -377,6 +390,9 @@ def get_masked_config_summary() -> Dict[str, Any]:
             "max_retries": EMBEDDINGS_MAX_RETRIES,
             "retry_delay": EMBEDDINGS_RETRY_DELAY,
             "enabled": ENABLE_EMBEDDINGS_PROCESSING,
+            "max_workers": MAX_EMBEDDINGS_WORKERS,
+            "queue_size": EMBEDDINGS_QUEUE_SIZE,
+            "processing_timeout": EMBEDDINGS_PROCESSING_TIMEOUT,
         }
     }
 
