@@ -132,6 +132,22 @@ def normalize_note_type(note_type: str) -> str:
         "generic_notes": "generic_note",  # Added plural
         "generic": "generic_note",
         "general": "generic_note",
+        
+        # OP Follow-up Visit variants
+        "op_follow_up_visit": "op_follow_up_visit",
+        "op_follow-up_visit": "op_follow_up_visit",
+        "op_followup_visit": "op_follow_up_visit",
+        "op_followup": "op_follow_up_visit",
+        "op_follow_up": "op_follow_up_visit",
+        "op_visit": "op_follow_up_visit",
+        "outpatient_follow_up": "op_follow_up_visit",
+        "outpatient_follow-up": "op_follow_up_visit",
+        "outpatient_followup": "op_follow_up_visit",
+        "outpatient_follow_up_visit": "op_follow_up_visit",
+        "outpatient_visit": "op_follow_up_visit",
+        "follow_up_visit": "op_follow_up_visit",
+        "followup_visit": "op_follow_up_visit",
+        "follow-up_visit": "op_follow_up_visit",
     }
 
     if normalized in alias_map:
@@ -145,6 +161,7 @@ def normalize_note_type(note_type: str) -> str:
         "procedure_note",
         "ed_note",
         "generic_note",
+        "op_follow_up_visit",
     }
 
     if normalized not in valid_types:
