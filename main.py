@@ -7,7 +7,7 @@ with unified Swagger documentation.
 Endpoints:
 - /chatbot/*         → Chatbot API endpoints
 - /notesdigest/*     → Notes Digest API endpoints
-- /docs              → Combined Swagger UI
+- /notes              → Combined Swagger UI
 - /health            → Unified health check
 """
 
@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     print("🚀 Notes Engine starting...")
     print("   - Chatbot service mounted at /chatbot")
     print("   - NotesDigest service mounted at /notesdigest")
-    print("   - Combined Swagger UI at /docs")
+    print("   - Combined Swagger UI at /notes")
     
     yield
     
@@ -46,7 +46,7 @@ app = FastAPI(
     title="Notes Engine API",
     description="Unified API combining Chatbot and Notes Digest services",
     version="1.0.0",
-    docs_url="/docs",
+    docs_url="/notes",
     redoc_url="/redoc",
     lifespan=lifespan
 )
@@ -147,7 +147,7 @@ async def root():
             "chatbot": "/chatbot",
             "notesdigest": "/notesdigest"
         },
-        "docs": "/docs",
+        "docs": "/notes",
         "health": "/health"
     }
 
