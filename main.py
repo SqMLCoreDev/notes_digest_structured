@@ -168,9 +168,14 @@ async def unified_health():
 if __name__ == "__main__":
     import uvicorn
     
+    print("🚀 Starting Notes Engine...")
+    print("📖 Swagger UI will be available at: http://localhost:8000/docs")
+    print("🏥 Chatbot API: http://localhost:8000/chatbot/v1/query")
+    print("📝 NotesDigest API: http://localhost:8000/notesdigest/process-notes")
+    
     uvicorn.run(
-        "main:app",
+        app,  # Pass the app object directly, not string
         host="0.0.0.0",
         port=8000,
-        reload=True
+        reload=False  # Set to False to avoid conflicts
     )

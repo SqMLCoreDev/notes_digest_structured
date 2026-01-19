@@ -83,6 +83,39 @@ async def readiness_check(
         }
         overall_status = "degraded"
     
+    # Check Vector Store (PGVector) connection
+    try:
+        if mcp_server.vector_store:
+            # Test a simple query to verify connection
+            test_result = await mcp_server.vector_store.retrieve_context(
+                query="test connection",
+                metadata=None
+            )
+            if test_result.get('success'):
+                components["vector_store"] = {
+                    "status": "connected",
+                    "collection": settings.COLLECTION_NAME,
+                    "connection": settings.POSTGRES_CONNECTION.split('@')[-1] if '@' in settings.POSTGRES_CONNECTION else 'localhost'
+                }
+            else:
+                components["vector_store"] = {
+                    "status": "connection_failed",
+                    "error": test_result.get('error', 'Unknown error')
+                }
+                overall_status = "degraded"
+        else:
+            components["vector_store"] = {
+                "status": "not_configured",
+                "note": "Vector store not initialized - check POSTGRES_CONNECTION and AWS credentials"
+            }
+            overall_status = "degraded"
+    except Exception as e:
+        components["vector_store"] = {
+            "status": "error",
+            "error": str(e)
+        }
+        overall_status = "degraded"
+    
     return HealthDetailResponse(
         status=overall_status,
         version=settings.APP_VERSION,

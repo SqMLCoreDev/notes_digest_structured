@@ -61,10 +61,10 @@ async def query_endpoint(
         raise HTTPException(status_code=400, detail="User is required")
     if not request.chatquery.strip():
         raise HTTPException(status_code=400, detail="Query is required")
-    if request.historyenabled and not request.chatsession_id:
+    if request.historyenabled and not request.chatsession_id and not request.conversation_id:
         raise HTTPException(
             status_code=400,
-            detail="chatsession_id is required when historyenabled=true"
+            detail="chatsession_id or conversation_id is required when historyenabled=true"
         )
     
     logger.info(f"[{correlation_id}] Query request: "

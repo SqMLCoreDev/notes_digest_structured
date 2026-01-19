@@ -39,9 +39,21 @@ class Settings(BaseSettings):
         default="us.anthropic.claude-3-5-sonnet-20241022-v2",
         description="Claude Sonnet 3.5 model ID"
     )
+    CLAUDE_HAIKU_3_5: str = Field(
+        default="us.anthropic.claude-3-5-haiku-20241022-v1",
+        description="Claude Haiku 3.5 model ID"
+    )
     CLAUDE_HAIKU_4_5: str = Field(
         default="us.anthropic.claude-haiku-4-5-20251001-v1",
         description="Claude Haiku 4.5 model ID"
+    )
+    CLAUDE_OPUS_4_1: str = Field(
+        default="us.anthropic.claude-opus-4-1-20250805-v1",
+        description="Claude Opus 4.1 model ID"
+    )
+    MISTRAL_7_B: str = Field(
+        default="mistral.mistral-7b-instruct-v0:2",
+        description="Mistral 7B model ID"
     )
     MODEL: str = Field(default="CLAUDE_HAIKU_4_5", description="Model name to use")
     MAX_TOKENS: int = Field(default=100000, description="Maximum tokens for model response")
@@ -52,6 +64,13 @@ class Settings(BaseSettings):
     ES_URL: Optional[str] = Field(default=None, description="Elasticsearch cluster URL")
     ES_USER: Optional[str] = Field(default=None, description="Elasticsearch username")
     ES_PASSWORD: Optional[str] = Field(default=None, description="Elasticsearch password")
+    ES_ENCODED_AUTH: Optional[str] = Field(default=None, description="Base64 encoded ES auth")
+    
+    # NotesDigest Elasticsearch indices
+    ES_INDEX_CLINICAL_NOTES: Optional[str] = Field(default=None, description="Clinical notes index")
+    ES_INDEX_PROCESSED_NOTES: Optional[str] = Field(default=None, description="Processed notes index")
+    ES_INDEX_NOTES_DIGEST: Optional[str] = Field(default=None, description="Notes digest index")
+    ES_INDEX_TOKEN_USAGE: Optional[str] = Field(default=None, description="Token usage index")
     
     # ===========================================
     # Cache Configuration
@@ -69,13 +88,23 @@ class Settings(BaseSettings):
         description="PostgreSQL connection string for PGVector (e.g., postgresql://user:pass@host:5432/db)"
     )
     COLLECTION_NAME: str = Field(
-        default="tia_qa",
+        default="medical_notes_embeddings",
         description="Vector collection name for storing embeddings"
+    )
+    VECTOR_DB_COLLECTION_NAME: str = Field(
+        default="medical_notes_embeddings",
+        description="Vector collection name (NotesDigest compatibility)"
     )
     EMBEDDINGS_MODEL: str = Field(
         default="amazon.titan-embed-text-v2:0", 
         description="Embeddings model ID for Amazon Titan"
     )
+    EMBEDDINGS_CHUNK_SIZE: int = Field(default=2000, description="Text chunk size for embeddings")
+    EMBEDDINGS_CHUNK_OVERLAP: int = Field(default=300, description="Text chunk overlap for embeddings")
+    EMBEDDINGS_MAX_RETRIES: int = Field(default=3, description="Max retries for embeddings")
+    EMBEDDINGS_RETRY_DELAY: float = Field(default=1.0, description="Retry delay for embeddings")
+    ENABLE_EMBEDDINGS_PROCESSING: bool = Field(default=True, description="Enable embeddings processing")
+    ENABLE_DATA_FLATTENING: bool = Field(default=True, description="Enable data flattening")
     
     # ===========================================
     # API Configuration
@@ -83,12 +112,26 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = Field(default="*", description="Allowed CORS origins (comma-separated)")
     MAPPING_INDEX: str = Field(default="chatbotconfiguration_data", description="Index for user mapping")
     
+    # NotesDigest API Configuration
+    API_BASE_URL: Optional[str] = Field(default=None, description="API base URL for NotesDigest")
+    API_NOTE_HEADER_TOKEN: Optional[str] = Field(default=None, description="API note header token")
+    N_PREVIOUS_VISITS: int = Field(default=1, description="Number of previous visits to include")
+    
+    # Processing Configuration
+    MAX_CONCURRENT_NOTES: int = Field(default=10, description="Max concurrent notes processing")
+    MAX_QUEUE_SIZE: int = Field(default=20, description="Max queue size for processing")
+    NOTE_PROCESSING_TIMEOUT: int = Field(default=1800, description="Note processing timeout in seconds")
+    BEDROCK_RATE_LIMIT_RPS: int = Field(default=30, description="Bedrock rate limit RPS")
+    
     @property
     def model_id(self) -> str:
         """Get the actual model ID based on MODEL setting."""
         model_mapping = {
             "CLAUDE_SONNET_3_5": self.CLAUDE_SONNET_3_5,
             "CLAUDE_HAIKU_4_5": self.CLAUDE_HAIKU_4_5,
+            "CLAUDE_HAIKU_3_5": self.CLAUDE_HAIKU_3_5,
+            "CLAUDE_OPUS_4_1": self.CLAUDE_OPUS_4_1,
+            "MISTRAL_7_B": self.MISTRAL_7_B,
         }
         return model_mapping.get(self.MODEL, self.CLAUDE_HAIKU_4_5)
     

@@ -1,0 +1,4 @@
+# Additional dependency for PostgreSQL cache backend
+# Add this to your existing requirements.txt
+
+asyncpg>=0.29.0  # PostgreSQL async driver for cache backend
