@@ -7,7 +7,7 @@ with unified Swagger documentation.
 Endpoints:
 - /chatbot/*         → Chatbot API endpoints
 - /notesdigest/*     → Notes Digest API endpoints
-- /notes              → Combined Swagger UI
+- /notes             → Combined Swagger UI
 - /health            → Unified health check
 """
 
@@ -147,7 +147,7 @@ async def root():
             "chatbot": "/chatbot",
             "notesdigest": "/notesdigest"
         },
-        "docs": "/notes",
+        "notes": "/notes",
         "health": "/health"
     }
 
