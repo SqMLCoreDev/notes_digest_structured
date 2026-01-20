@@ -62,6 +62,8 @@ def check_pgvector():
             return True
         
         print("[CHECKING] PGVector...")
+        
+        # PGVector uses LangChain's PGVector which manages its own connections
         from app.services.rag.embeddings import get_embeddings_client
         from app.services.clients.pgvector_client import get_vector_store_client
         
@@ -69,10 +71,12 @@ def check_pgvector():
         if embeddings:
             vector_store = get_vector_store_client(embeddings=embeddings.get_langchain_embeddings())
             if vector_store:
-                print("[OK] PGVector: Connected")
+                print("[OK] PGVector: Connected (LangChain manages connections)")
                 return True
+        
         print("[FAIL] PGVector: Could not initialize")
         return False
+        
     except Exception as e:
         print(f"[FAIL] PGVector: {e}")
         return False

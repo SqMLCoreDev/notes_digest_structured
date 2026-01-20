@@ -8,6 +8,7 @@ Enhanced caching strategy with three tiers:
 
 Features:
 - Automatic failover between tiers
+- Built-in conversation summarization using Claude
 - In-memory summarization (no DB writes)
 - Graceful degradation when services are unavailable
 - Performance monitoring and statistics
@@ -20,7 +21,8 @@ import json
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.services.conversation_summarizer import get_conversation_summarizer
+from app.services.postgres_service import get_postgres_service, ASYNCPG_AVAILABLE
+from app.services.clients.claude_client import ClaudeClient
 
 logger = get_logger(__name__)
 
@@ -31,136 +33,6 @@ try:
 except ImportError:
     REDIS_AVAILABLE = False
     logger.warning("redis package not installed. Redis caching disabled.")
-
-# Try to import asyncpg for PostgreSQL support
-try:
-    import asyncpg
-    from urllib.parse import urlparse
-    ASYNCPG_AVAILABLE = True
-except ImportError:
-    ASYNCPG_AVAILABLE = False
-    logger.warning("asyncpg package not installed. PostgreSQL caching disabled.")
-
-
-class PostgreSQLCacheBackend:
-    """
-    Simple PostgreSQL cache backend for reading conversation history.
-    Reads from existing chatbot_messages table (UI team manages writes).
-    """
-    
-    def __init__(
-        self,
-        connection_string: str,
-        max_entries_per_session: int = 30,
-        table_name: str = "chatbot_messages"
-    ):
-        self.connection_string = connection_string
-        self.max_entries = max_entries_per_session
-        self.table_name = table_name
-        self._pool: Optional[asyncpg.Pool] = None
-    
-    async def _get_pool(self) -> asyncpg.Pool:
-        """Get or create connection pool."""
-        if self._pool is None:
-            parsed = urlparse(self.connection_string)
-            self._pool = await asyncpg.create_pool(
-                host=parsed.hostname,
-                port=parsed.port or 5432,
-                user=parsed.username,
-                password=parsed.password,
-                database=parsed.path.lstrip('/'),
-                min_size=2,
-                max_size=10
-            )
-            logger.info(f"✅ PostgreSQL pool created for table: {self.table_name}")
-        return self._pool
-    
-    async def get(self, conversation_id: str) -> Optional[List[Dict[str, Any]]]:
-        """Get conversation history from assistant rows only."""
-        try:
-            pool = await self._get_pool()
-            
-            # Convert conversation_id to int if it's numeric
-            try:
-                conv_id_param = int(conversation_id)
-            except (ValueError, TypeError):
-                conv_id_param = conversation_id
-            
-            query = f"""
-            SELECT query, response, created_at, id
-            FROM {self.table_name}
-            WHERE conversation_id = $1 
-              AND deleted_at IS NULL
-              AND role = 'assistant'
-              AND query IS NOT NULL
-              AND response IS NOT NULL
-            ORDER BY id ASC
-            LIMIT $2
-            """
-            
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(query, conv_id_param, self.max_entries)
-                
-                if not rows:
-                    return None
-                
-                messages = []
-                for row in rows:
-                    messages.append({
-                        'query': row['query'] or '',
-                        'response': row['response'] or '',
-                        'used_indices': [],  # Not stored in existing table
-                        'timestamp': row['created_at'].isoformat() if row['created_at'] else datetime.utcnow().isoformat(),
-                        'message_id': row['id']
-                    })
-                
-                logger.debug(f"Retrieved {len(messages)} Q&A pairs for conversation {conversation_id}")
-                return messages
-                
-        except Exception as e:
-            logger.error(f"PostgreSQL get error: {e}")
-            return None
-    
-    async def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics from chatbot_messages table."""
-        try:
-            pool = await self._get_pool()
-            
-            query = f"""
-            SELECT 
-                COUNT(DISTINCT conversation_id) as total_conversations,
-                COUNT(*) FILTER (WHERE role = 'assistant') as total_qa_pairs,
-                COUNT(*) FILTER (WHERE role = 'user') as total_user_messages,
-                SUM(LENGTH(COALESCE(query, '') || COALESCE(response, ''))) as total_size_bytes,
-                MAX(created_at) as latest_message,
-                MIN(created_at) as earliest_message
-            FROM {self.table_name}
-            WHERE deleted_at IS NULL
-            """
-            
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(query)
-                
-                return {
-                    'backend': 'postgresql_simple',
-                    'table_name': self.table_name,
-                    'total_conversations': row['total_conversations'] or 0,
-                    'total_qa_pairs': row['total_qa_pairs'] or 0,
-                    'total_user_messages': row['total_user_messages'] or 0,
-                    'estimated_size_kb': round((row['total_size_bytes'] or 0) / 1024, 2),
-                    'latest_message': row['latest_message'].isoformat() if row['latest_message'] else None,
-                    'earliest_message': row['earliest_message'].isoformat() if row['earliest_message'] else None
-                }
-                
-        except Exception as e:
-            logger.error(f"PostgreSQL stats error: {e}")
-            return {'backend': 'postgresql_simple', 'error': str(e)}
-    
-    async def close(self) -> None:
-        """Close PostgreSQL connection pool."""
-        if self._pool:
-            await self._pool.close()
-            self._pool = None
     """
     In-memory cache backend using deques.
     Provides local fallback when Redis and PostgreSQL are unavailable.
@@ -398,16 +270,16 @@ class ThreeTierCacheService:
             except Exception as e:
                 logger.warning(f"❌ Tier 1: Redis initialization failed: {e}")
         
-        # Tier 2: PostgreSQL backend for reading existing data (read-only)
-        self.postgres_backend = None
+        # Tier 2: PostgreSQL service for reading existing data (read-only)
+        self.postgres_service = None
         if ASYNCPG_AVAILABLE and settings.POSTGRES_CONNECTION:
             try:
-                self.postgres_backend = PostgreSQLCacheBackend(
+                self.postgres_service = get_postgres_service(
                     connection_string=settings.POSTGRES_CONNECTION,
                     max_entries_per_session=100,  # Read more from DB for summarization
                     table_name="chatbot_messages"
                 )
-                logger.info("✅ Tier 2: PostgreSQL cache initialized (read-only)")
+                logger.info("✅ Tier 2: PostgreSQL service initialized (read-only)")
             except Exception as e:
                 logger.warning(f"❌ Tier 2: PostgreSQL initialization failed: {e}")
         
@@ -417,8 +289,23 @@ class ThreeTierCacheService:
         )
         logger.info("✅ Tier 3: In-memory cache initialized (fallback)")
         
-        # Conversation summarizer
-        self.summarizer = get_conversation_summarizer()
+        # Conversation summarization settings
+        self.claude_client = ClaudeClient()
+        self.max_messages = 30
+        self.keep_recent = 10
+        self.summary_prompt = """
+Please create a concise summary of this conversation history. Focus on:
+1. Key topics discussed
+2. Important decisions or conclusions
+3. Relevant context for future messages
+4. User preferences or requirements mentioned
+
+Keep the summary under 500 words and maintain the conversational context.
+
+Conversation to summarize:
+{conversation_history}
+
+Summary:"""
         
         # Performance tracking
         self.tier_stats = {
@@ -458,9 +345,9 @@ class ThreeTierCacheService:
                 logger.error(f"Tier 1 (Redis) error: {e}")
         
         # 🔄 TIER 2: Try PostgreSQL
-        if self.postgres_backend:
+        if self.postgres_service:
             try:
-                postgres_responses = await self.postgres_backend.get(session_id)
+                postgres_responses = await self.postgres_service.get_conversation_history(session_id)
                 if postgres_responses:
                     self.tier_stats['postgres_hits'] += 1
                     logger.debug(f"🔄 Tier 2 (PostgreSQL) hit: {len(postgres_responses)} responses for {session_id}")
@@ -491,16 +378,107 @@ class ThreeTierCacheService:
     
     async def _apply_summarization(self, session_id: str, responses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Apply in-memory summarization if needed."""
-        if await self.summarizer.should_summarize(responses):
+        if self._should_summarize(responses):
             logger.info(f"📝 Summarizing conversation {session_id}: {len(responses)} messages")
             
             # Summarize in-memory (don't save to DB)
-            summarized_conversation, summary_entry = await self.summarizer.summarize_conversation(responses)
+            summarized_conversation, summary_entry = await self._summarize_conversation(responses)
             
             logger.info(f"📝 Summarization complete: {len(responses)} → {len(summarized_conversation)} messages")
             return summarized_conversation
         
         return responses
+    
+    def _should_summarize(self, messages: List[Dict[str, Any]]) -> bool:
+        """Check if conversation should be summarized."""
+        qa_pairs = len([msg for msg in messages if msg.get('query') and msg.get('response')])
+        return qa_pairs > self.max_messages
+    
+    async def _summarize_conversation(
+        self, 
+        messages: List[Dict[str, Any]]
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Summarize a long conversation.
+        
+        Args:
+            messages: Full conversation history
+            
+        Returns:
+            Tuple of (recent_messages, summary_entry)
+        """
+        if len(messages) <= self.max_messages:
+            return messages, None
+        
+        # Split messages: older (to summarize) + recent (to keep)
+        messages_to_summarize = messages[:-self.keep_recent]
+        recent_messages = messages[-self.keep_recent:]
+        
+        logger.info(f"Summarizing {len(messages_to_summarize)} messages, keeping {len(recent_messages)} recent")
+        
+        # Create conversation text for summarization
+        conversation_text = self._format_conversation_for_summary(messages_to_summarize)
+        
+        # Generate summary using Claude
+        try:
+            summary_text = await self._generate_summary(conversation_text)
+            
+            # Create summary entry
+            summary_entry = {
+                'query': '[CONVERSATION SUMMARY]',
+                'response': summary_text,
+                'used_indices': [],
+                'timestamp': datetime.utcnow().isoformat(),
+                'message_count': len(messages_to_summarize),
+                'is_summary': True
+            }
+            
+            # Return summary + recent messages
+            summarized_conversation = [summary_entry] + recent_messages
+            
+            logger.info(f"Created summary of {len(messages_to_summarize)} messages")
+            return summarized_conversation, summary_entry
+            
+        except Exception as e:
+            logger.error(f"Failed to generate summary: {e}")
+            # Fallback: just keep recent messages
+            return recent_messages, None
+    
+    def _format_conversation_for_summary(self, messages: List[Dict[str, Any]]) -> str:
+        """Format conversation messages for summarization."""
+        conversation_parts = []
+        
+        for i, msg in enumerate(messages, 1):
+            query = msg.get('query', '').strip()
+            response = msg.get('response', '').strip()
+            timestamp = msg.get('timestamp', '')
+            
+            if query and response:
+                conversation_parts.append(f"""
+Message {i} ({timestamp}):
+User: {query}
+Assistant: {response}
+""")
+        
+        return "\n".join(conversation_parts)
+    
+    async def _generate_summary(self, conversation_text: str) -> str:
+        """Generate summary using Claude."""
+        try:
+            prompt = self.summary_prompt.format(conversation_history=conversation_text)
+            
+            response = await self.claude_client.generate_response(
+                prompt=prompt,
+                max_tokens=1000,  # Limit summary length
+                temperature=0.3   # More focused, less creative
+            )
+            
+            return response.strip()
+            
+        except Exception as e:
+            logger.error(f"Claude summarization error: {e}")
+            # Fallback summary
+            return f"[Auto-generated summary of previous conversation covering multiple topics and {len(conversation_text.split('Message'))} exchanges]"
     
     async def _cache_in_higher_tiers(self, session_id: str, responses: List[Dict[str, Any]]) -> None:
         """Cache responses in higher tiers for faster future access."""
@@ -595,9 +573,9 @@ class ThreeTierCacheService:
             stats['tier_1_redis'] = {'available': False, 'reason': 'not_configured'}
         
         # PostgreSQL stats
-        if self.postgres_backend:
+        if self.postgres_service:
             try:
-                postgres_stats = await self.postgres_backend.get_stats()
+                postgres_stats = await self.postgres_service.get_stats()
                 stats['tier_2_postgresql'] = postgres_stats
             except Exception as e:
                 stats['tier_2_postgresql'] = {'available': False, 'error': str(e)}
