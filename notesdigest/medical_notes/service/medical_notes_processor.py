@@ -98,6 +98,22 @@ def normalize_note_type(note_type: str) -> str:
         # Progress note variants
         "progress_note": "progress_note",
         "progress_notes": "progress_note",
+
+        #Neurology Progress note variants
+        "neurology_progress_note": "neurology_progress_note",
+        "neurology_progress_notes": "neurology_progress_note",
+
+        #Neurology Consultation note variants
+        "neurology_consult_note": "neurology_consultation_note",
+        "neurology_consult_notes": "neurology_consultation_note",
+        
+        # IM Progress note variants
+        "im_progress_note": "im_progress_note",
+        "im_progress_notes": "im_progress_note",
+        
+        # IM Consultation note variants
+        "im_consult_note": "im_consultation_note",
+        "im_consult_notes": "im_consultation_note",
         
         # History & Physical variants
         "history_physical": "history_physical",
@@ -135,19 +151,12 @@ def normalize_note_type(note_type: str) -> str:
         
         # OP Follow-up Visit variants
         "op_follow_up_visit": "op_follow_up_visit",
-        "op_follow-up_visit": "op_follow_up_visit",
-        "op_followup_visit": "op_follow_up_visit",
-        "op_followup": "op_follow_up_visit",
-        "op_follow_up": "op_follow_up_visit",
-        "op_visit": "op_follow_up_visit",
-        "outpatient_follow_up": "op_follow_up_visit",
-        "outpatient_follow-up": "op_follow_up_visit",
-        "outpatient_followup": "op_follow_up_visit",
-        "outpatient_follow_up_visit": "op_follow_up_visit",
-        "outpatient_visit": "op_follow_up_visit",
-        "follow_up_visit": "op_follow_up_visit",
-        "followup_visit": "op_follow_up_visit",
-        "follow-up_visit": "op_follow_up_visit",
+        "OP_Followup_visit_note": "op_follow_up_visit",
+
+        # soap variants
+        "soap": "soap",
+        "soap_note": "soap",
+        "soap_notes": "soap"
     }
 
     if normalized in alias_map:
@@ -162,6 +171,11 @@ def normalize_note_type(note_type: str) -> str:
         "ed_note",
         "generic_note",
         "op_follow_up_visit",
+        "soap",
+        "neurology_progress_note",
+        "neurology_consultation_note",
+        "im_progress_note",
+        "im_consultation_note"
     }
 
     if normalized not in valid_types:
