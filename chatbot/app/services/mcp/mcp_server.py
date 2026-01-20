@@ -212,27 +212,78 @@ class MCPServer:
                 }
             
             elif tool_name == 'elasticsearch_search':
-                return await self.es_client.search(
+                # Track Elasticsearch tool usage
+                self._tool_types_used.add('ELASTICSEARCH')
+                logger.info(f"🔍 ELASTICSEARCH TOOL: Searching index {index}")
+                
+                result = await self.es_client.search(
                     index=index,
                     query=tool_input.get('query', {"match_all": {}}),
                     size=tool_input.get('size', 10),
                     sort=tool_input.get('sort'),
                     fields=tool_input.get('fields')
                 )
+                
+                # Enhanced logging for Elasticsearch results
+                if result.get('success'):
+                    hit_count = len(result.get('hits', []))
+                    total_hits = result.get('total', {}).get('value', 0)
+                    if hit_count > 0:
+                        logger.info(f"✅ ELASTICSEARCH TOOL: Found {hit_count} documents (total: {total_hits}) in {index}")
+                        # Log first document preview for debugging
+                        first_doc = result.get('hits', [{}])[0].get('_source', {})
+                        preview_fields = {k: str(v)[:50] + "..." if len(str(v)) > 50 else v 
+                                        for k, v in list(first_doc.items())[:3]}
+                        logger.info(f"📄 ELASTICSEARCH PREVIEW: {preview_fields}")
+                    else:
+                        logger.warning(f"⚠️ ELASTICSEARCH TOOL: No documents found in {index}")
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    logger.error(f"❌ ELASTICSEARCH TOOL: Search failed - {error_msg}")
+                
+                return result
             
             elif tool_name == 'elasticsearch_aggregate':
-                return await self.es_client.aggregate(
+                # Track Elasticsearch tool usage
+                self._tool_types_used.add('ELASTICSEARCH')
+                logger.info(f"📊 ELASTICSEARCH TOOL: Aggregating data in {index}")
+                
+                result = await self.es_client.aggregate(
                     index=index,
                     aggs=tool_input.get('aggs', {}),
                     query=tool_input.get('query'),
                     size=tool_input.get('size', 0)
                 )
+                
+                # Enhanced logging for aggregation results
+                if result.get('success'):
+                    agg_keys = list(result.get('aggregations', {}).keys())
+                    logger.info(f"✅ ELASTICSEARCH TOOL: Aggregation completed with keys: {agg_keys}")
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    logger.error(f"❌ ELASTICSEARCH TOOL: Aggregation failed - {error_msg}")
+                
+                return result
             
             elif tool_name == 'elasticsearch_count':
-                return await self.es_client.count(
+                # Track Elasticsearch tool usage
+                self._tool_types_used.add('ELASTICSEARCH')
+                logger.info(f"🔢 ELASTICSEARCH TOOL: Counting documents in {index}")
+                
+                result = await self.es_client.count(
                     index=index,
                     query=tool_input.get('query')
                 )
+                
+                # Enhanced logging for count results
+                if result.get('success'):
+                    count = result.get('count', 0)
+                    logger.info(f"✅ ELASTICSEARCH TOOL: Found {count} documents in {index}")
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    logger.error(f"❌ ELASTICSEARCH TOOL: Count failed - {error_msg}")
+                
+                return result
             
             elif tool_name == 'elasticsearch_multi_search':
                 # Handle multi-search
@@ -270,12 +321,30 @@ class MCPServer:
                 metadata = tool_input.get('metadata', None)
                 
                 if not self.vector_store:
+                    logger.error(f"❌ RAG TOOL: Vector store not configured")
                     return {
                         'success': False,
                         'error': 'Vector store not configured. Please set POSTGRES_CONNECTION in environment.'
                     }
                 
-                return await self.vector_store.retrieve_context(query, metadata)
+                result = await self.vector_store.retrieve_context(query, metadata)
+                
+                # Enhanced logging for RAG results
+                if result.get('success'):
+                    doc_count = result.get('document_count', 0)
+                    if doc_count > 0:
+                        logger.info(f"✅ RAG TOOL: Found {doc_count} documents in vector store")
+                        # Log first few words of content for debugging
+                        content = result.get('serialized_content', '')
+                        preview = content[:100] + "..." if len(content) > 100 else content
+                        logger.info(f"📄 RAG CONTENT PREVIEW: {preview}")
+                    else:
+                        logger.warning(f"⚠️ RAG TOOL: No documents found in vector store")
+                else:
+                    error_msg = result.get('error', 'Unknown error')
+                    logger.error(f"❌ RAG TOOL: Failed to retrieve context - {error_msg}")
+                
+                return result
             
             else:
                 return {'success': False, 'error': f'Unknown tool: {tool_name}'}
@@ -311,6 +380,9 @@ class MCPServer:
         """
         # Reset index tracking
         self.es_client.reset_used_indices()
+        
+        # Reset tool type tracking
+        self._tool_types_used.clear()
         
         # Analyze query
         query_analysis = self.analyze_user_query(question, conversation_history)
@@ -354,6 +426,9 @@ class MCPServer:
                     
                     if not final_answer:
                         return "I couldn't generate a response.", self.es_client.get_used_indices(), None
+                    
+                    # Log data sources used
+                    self._log_data_sources_used()
                     
                     # Generate chart
                     base64_image = await self._generate_chart(question, final_answer)
@@ -399,6 +474,18 @@ class MCPServer:
             self.es_client.get_used_indices(),
             None
         )
+    
+    def _log_data_sources_used(self):
+        """Log which data sources were used in the query."""
+        if not self._tool_types_used:
+            logger.info("📋 DATA SOURCES: No tools were used (direct response)")
+            return
+        
+        sources_used = list(self._tool_types_used)
+        if len(sources_used) == 1:
+            logger.info(f"📋 DATA SOURCES: Used {sources_used[0]} only ✅")
+        else:
+            logger.warning(f"⚠️ DATA SOURCES: Mixed sources used - {', '.join(sources_used)} (should use only one!)")
     
     async def _generate_chart(self, question: str, answer: str) -> Optional[str]:
         """Generate chart visualization from Q&A (async)."""
@@ -539,30 +626,46 @@ Select the most appropriate index from: {', '.join(indices)}
         if query_analysis and query_analysis.get('execution_path'):
             analysis_context = self._build_analysis_context(query_analysis, indices)
         
-        # RAG routing guidance - always included since PGVector is installed
-        rag_routing_text = """
-**🚨 CRITICAL: TOOL ROUTING DECISION 🚨**
+        # Smart data source routing with explicit user intent detection
+        smart_routing_text = """
+**🧠 DETERMINISTIC DATA SOURCE ROUTING 🧠**
 
-You have access to TWO types of tools. Choose ONE type per question:
+STEP 1: ANALYZE USER INTENT (Check for explicit keywords):
 
-🔍 **RAG TOOLS** (for raw patient data - USE THESE FOR PATIENT QUERIES):
-- Use for: "get notes", "show records", "find data", "raw data", MRN numbers, patient names, noteId
-- Tools: `extract_metadata_from_question` → `retrieve_context`
-- Example: "Get notes for MRN 123456" → Use RAG tools
-- Example: "Show raw data for patient John Doe" → Use RAG tools
+🔍 **RAG-ONLY MODE** - User explicitly requests raw data:
+- Trigger words: "raw data", "RAG", "vector search", "embeddings", "original notes", "unprocessed"
+- MANDATORY ACTION: Use ONLY RAG tools (`extract_metadata_from_question` → `retrieve_context`)
+- FORBIDDEN: Do NOT use any Elasticsearch tools when RAG mode is triggered
+- If RAG returns data: Present RAG results ONLY
+- If RAG returns empty: Inform user that raw data is not available for this query
 
-📊 **ELASTICSEARCH TOOLS** (for analytics ONLY):
-- Use for: "how many", "count", "total", "average", "statistics", "trends"
-- Tools: `elasticsearch_search`, `elasticsearch_aggregate`, `elasticsearch_count`
-- Example: "How many patients?" → Use Elasticsearch tools
+📊 **ELASTICSEARCH-ONLY MODE** - User requests analytics/counts:
+- Trigger words: "how many", "count", "total", "average", "statistics", "trends", "analytics", "aggregate"
+- MANDATORY ACTION: Use ONLY Elasticsearch tools
+- FORBIDDEN: Do NOT use RAG tools for analytics queries
 
-**NEVER MIX TOOL TYPES** - Choose ONE system per question.
-**FOR RAW PATIENT DATA: ALWAYS USE RAG TOOLS, NOT ELASTICSEARCH**
+🎯 **AUTO-ROUTING MODE** - General patient queries (no explicit data source):
+- Examples: "get notes for John Doe", "show patient demographics", "find information about"
+- Strategy: Try Elasticsearch FIRST (faster, structured data)
+- Fallback: If Elasticsearch returns insufficient/empty results → try RAG tools
+- Present the FIRST successful result - do not combine sources
+
+**CRITICAL ENFORCEMENT RULES:**
+1. 🚫 NEVER use both RAG and Elasticsearch in the same response
+2. 🚫 NEVER mix results from multiple data sources
+3. ✅ Use the FIRST tool that returns data successfully
+4. ✅ If user specifies a data source, respect that choice absolutely
+5. 🚫 NEVER ask user to choose data sources - route automatically
+
+**EXECUTION SEQUENCE:**
+- RAG Mode: extract_metadata_from_question → retrieve_context → STOP
+- Analytics Mode: get_index_schema → elasticsearch_* tools → STOP  
+- Auto Mode: Try elasticsearch_* first → if empty, try RAG → STOP
 """
         
-        system_prompt = f"""You are an expert healthcare data analyst with access to healthcare data via Elasticsearch.
+        system_prompt = f"""You are an expert healthcare data analyst with access to healthcare data via Elasticsearch and RAG tools.
 
-{rag_routing_text}
+{smart_routing_text}
 
 {schema_text}
 
@@ -623,73 +726,22 @@ Identifier Value: {query_analysis.get('identifier') or 'NOT SPECIFIED'}
 
 """
         
-        if query_analysis['execution_path'] == 'A':
-            context += f"""
-PATH A DETECTED: Both data type AND template specified
-YOUR IMMEDIATE ACTIONS (NO QUESTIONS ALLOWED):
+        # Build smart routing context based on user intent
+        context += f"""
+ROUTING ANALYSIS:
+- Identifier: {query_analysis.get('identifier_type')} = "{query_analysis.get('identifier')}"
+- Template: {template_name if query_analysis.get('template') else 'Natural format'}
 
-1. Query Index: {index_to_use}
-2. Search For: {query_analysis.get('identifier_type')} = "{query_analysis.get('identifier')}"
-3. Format With: {query_analysis.get('template')} ({template_name})
-4. Present Result: Formatted clinical note
+ROUTING STRATEGY:
+1. 🔍 Check if user explicitly requested RAG/raw data
+2. 📊 Check if user asked for analytics/counts  
+3. 🎯 Default to Elasticsearch-first for general queries
 
-CRITICAL - DO NOT ASK:
-- "Which data source would you like?" (User already specified: {query_analysis.get('data_type')})
-- "Which template format would you like?" (User already specified: {template_name})
-
-EXAMPLE RESPONSE START:
-"Here is the {query_analysis.get('data_type')} clinical note for {query_analysis.get('identifier')} formatted as a {template_name}:"
-[Then provide the formatted note following the template structure]
-"""
-        elif query_analysis['execution_path'] == 'B':
-            context += f"""
-PATH B DETECTED: Only data type specified (no template)
-YOUR ACTIONS IN ORDER:
-
-1. Query Index: {index_to_use} (DO NOT ASK - data type already specified)
-2. Search For: {query_analysis.get('identifier_type')} = "{query_analysis.get('identifier')}"
-3. AFTER retrieving data, ask: "Which template format would you like?"
-4. Wait for user's template selection
-5. Format and present the note
-
-CRITICAL - DO NOT ASK:
-- "Which data source would you like?" (User already specified: {query_analysis.get('data_type')})
-
-DO ASK (after querying):
-- "I found the note data. Which template format would you like me to use?"
-"""
-        elif query_analysis['execution_path'] == 'C':
-            context += f"""
-PATH C DETECTED: Only template specified (no data type)
-YOUR ACTIONS IN ORDER:
-
-1. Ask user: "Which data source would you like: (1) Raw Data or (2) Processed Data?"
-2. Wait for user's data type selection
-3. Query the selected index
-4. Format With: {query_analysis.get('template')} ({template_name}) (DO NOT ASK - already specified)
-5. Present formatted note
-
-CRITICAL - DO NOT ASK:
-- "Which template format would you like?" (User already specified: {template_name})
-
-DO ASK (before querying):
-- "Which data source would you like: (1) Raw Data or (2) Processed Data?"
-"""
-        elif query_analysis['execution_path'] == 'D':
-            context += f"""
-PATH D DETECTED: Neither data type nor template specified
-YOUR ACTIONS IN ORDER:
-
-1. Ask user: "Which data source would you like: (1) Raw Data or (2) Processed Data?"
-2. Wait for user's data type selection
-3. Query the selected index
-4. Ask user: "Which template format would you like?"
-5. Wait for user's template selection
-6. Format and present the note
-
-YOU MUST ASK BOTH QUESTIONS (user didn't specify either):
-- First ask about data source
-- Then ask about template format
+EXECUTION RULES:
+- If RAG requested: Use RAG tools only (Elasticsearch fallback if RAG fails)
+- If analytics requested: Use Elasticsearch tools only
+- If general query: Try Elasticsearch first, RAG fallback if insufficient
+- Never mention data source types to user
 """
         
         return context
@@ -715,7 +767,7 @@ YOU MUST ASK BOTH QUESTIONS (user didn't specify either):
             },
             {
                 "name": "elasticsearch_search",
-                "description": "Search Elasticsearch indices for matching documents.",
+                "description": "📊 ELASTICSEARCH TOOL: Search structured data in Elasticsearch indices. Use for general patient queries, demographics, processed notes, and when RAG tools are not explicitly requested. DO NOT use when user specifically asks for 'raw data' or 'original notes'.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -730,7 +782,7 @@ YOU MUST ASK BOTH QUESTIONS (user didn't specify either):
             },
             {
                 "name": "elasticsearch_aggregate",
-                "description": "Perform aggregations on Elasticsearch data.",
+                "description": "📊 ELASTICSEARCH TOOL: Perform analytics and aggregations (counts, averages, statistics). Use ONLY for analytics queries like 'how many', 'count', 'total', 'average', 'statistics'. DO NOT use for individual patient data retrieval.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -744,7 +796,7 @@ YOU MUST ASK BOTH QUESTIONS (user didn't specify either):
             },
             {
                 "name": "elasticsearch_count",
-                "description": "Count documents in an index.",
+                "description": "📊 ELASTICSEARCH TOOL: Count documents for analytics. Use ONLY for counting queries like 'how many patients', 'total notes', etc. DO NOT use for individual patient data retrieval.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -778,7 +830,7 @@ YOU MUST ASK BOTH QUESTIONS (user didn't specify either):
             # RAG Tools for raw patient data retrieval
             {
                 "name": "extract_metadata_from_question",
-                "description": "🔍 RAG TOOL: Extract metadata from questions about specific patient data. Use ONLY for raw data questions that mention patient identifiers (MRN, noteId, patient names). This is the FIRST step for retrieving patient records, clinical notes, or medical documentation.",
+                "description": "🔍 RAG TOOL: Extract metadata from questions about RAW PATIENT DATA ONLY. Use ONLY when user explicitly requests 'raw data', 'original notes', 'unprocessed data', or when in RAG-ONLY mode. This is the FIRST step for retrieving patient records from vector store. DO NOT use for analytics or count queries.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -792,7 +844,7 @@ YOU MUST ASK BOTH QUESTIONS (user didn't specify either):
             },
             {
                 "name": "retrieve_context",
-                "description": "📋 RAG TOOL: Retrieve actual patient data from vector store. Use ONLY after extract_metadata_from_question for raw data questions. This tool returns the actual clinical content, patient records, and medical documentation.",
+                "description": "📋 RAG TOOL: Retrieve actual RAW PATIENT DATA from vector store. Use ONLY after extract_metadata_from_question and ONLY for raw data requests. This tool returns actual clinical content, patient records, and medical documentation from the vector database. DO NOT use for analytics, counts, or statistics.",
                 "input_schema": {
                     "type": "object",
                     "properties": {

@@ -184,60 +184,23 @@ class VectorStoreClient:
         """
         metadata = {}
         
-        # Extract MRN numbers
+        # Extract MRN numbers (precise identifiers)
         mrn_match = re.search(r"\bmrn\s*[:=]?\s*(\d+)", question, re.IGNORECASE)
         if mrn_match:
             metadata["patientMRN"] = mrn_match.group(1).zfill(6)
         
-        # Extract note IDs
+        # Extract note IDs (precise identifiers)
         note_match = re.search(r"\bnote(?:id|_id)?\s*[:=]?\s*(\d+)", question, re.IGNORECASE)
         if note_match:
             metadata["noteId"] = note_match.group(1)
         
-        # Extract dates
+        # Extract dates (precise identifiers)
         date_match = re.search(r"\b\d{2}-\d{2}-\d{4}\b", question)
         if date_match:
             metadata["serviceDate"] = date_match.group(0)
         
-        # Extract patient names - multiple patterns
-        patient_name = None
-        
-        # Pattern 1: "for [Name]" or "for patient [Name]"
-        name_match1 = re.search(r"\bfor\s+(?:patient\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)", question)
-        if name_match1:
-            patient_name = name_match1.group(1)
-        
-        # Pattern 2: "notes for [Name]" or "data for [Name]"
-        name_match2 = re.search(r"\b(?:notes?|data|records?)\s+for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)", question)
-        if name_match2:
-            patient_name = name_match2.group(1)
-        
-        # Pattern 3: "[Name]'s notes" or "[Name]'s data"
-        name_match3 = re.search(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'s\s+(?:notes?|data|records?)", question)
-        if name_match3:
-            patient_name = name_match3.group(1)
-        
-        # Pattern 4: "patient [Name]" anywhere in the question
-        name_match4 = re.search(r"\bpatient\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)", question)
-        if name_match4:
-            patient_name = name_match4.group(1)
-        
-        # Pattern 5: Just a name at the end (like "documentation for Maria")
-        name_match5 = re.search(r"\bfor\s+([A-Z][a-z]+)$", question)
-        if name_match5:
-            patient_name = name_match5.group(1)
-        
-        if patient_name:
-            # Parse name into first and last
-            name_parts = patient_name.strip().split()
-            if len(name_parts) == 1:
-                metadata["patientFirstName"] = name_parts[0]
-            elif len(name_parts) == 2:
-                metadata["patientFirstName"] = name_parts[0]
-                metadata["patientLastName"] = name_parts[1]
-            elif len(name_parts) > 2:
-                metadata["patientFirstName"] = name_parts[0]
-                metadata["patientLastName"] = " ".join(name_parts[1:])
+        # Note: Patient names are NOT filtered here - let vector similarity search handle names
+        # This allows for better matching of variations, nicknames, typos, and partial names
         
         return metadata if metadata else None
 

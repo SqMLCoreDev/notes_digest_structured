@@ -41,13 +41,8 @@ class QueryRequest(BaseModel):
     )
     chatsession_id: Optional[str] = Field(
         None,
-        description="Session ID for retrieving conversation history (required when historyenabled=true)",
-        examples=["3d494773-33cf-4907-bcb5-21de151a33ec"]
-    )
-    conversation_id: Optional[str] = Field(
-        None,
-        description="Optional: PostgreSQL conversation_id to load specific conversation history. If provided, this overrides chatsession_id for PostgreSQL queries.",
-        examples=["1", "123", "conversation-uuid"]
+        description="Session ID for retrieving conversation history (required when historyenabled=true). This maps to conversation_id in PostgreSQL.",
+        examples=["1", "2", "session-uuid"]
     )
 
     class Config:
@@ -57,8 +52,7 @@ class QueryRequest(BaseModel):
                 "user": "user123",
                 "chatquery": "What about the top 10 records?",
                 "historyenabled": False,
-                "chatsession_id": "3d494773-33cf-4907-bcb5-21de151a33ec",
-                "conversation_id": "1"
+                "chatsession_id": "1"
             }
         }
 

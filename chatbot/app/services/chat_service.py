@@ -12,7 +12,7 @@ from app.core.logging import get_logger
 from app.core.exceptions import (
     MCPException, ValidationError, AuthorizationError, OpenSearchError
 )
-from app.services.cache_service_redis_postgres_simple_summary import SimplifiedCacheService as CacheService, get_cache_service
+from app.services.cache_service_three_tier import ThreeTierCacheService as CacheService, get_cache_service
 from app.services.mcp.mcp_server import MCPServer, get_mcp_server
 from app.services.clients.es_client import OpenSearchClient
 from app.schema import QueryRequest, QueryResponse
@@ -57,10 +57,9 @@ class ChatService:
         query = request.chatquery.strip()
         history_enabled = request.historyenabled
         session_id = request.chatsession_id
-        conversation_id = request.conversation_id  # New optional field
         
         logger.info(f"Processing query: user={user}, department={department}, "
-                    f"history={history_enabled}, session_id={session_id}, conversation_id={conversation_id}")
+                    f"history={history_enabled}, session_id={session_id}")
         
         # Log cache stats
         cache_stats = await self.cache_service.get_stats()
@@ -69,10 +68,9 @@ class ChatService:
         # Get allowed indices for user
         allowed_indices = await self._get_user_allowed_indices(department, user)
         
-        # Handle conversation history - use conversation_id if provided, otherwise use session_id
-        effective_session_id = conversation_id if conversation_id else session_id
+        # Handle conversation history - use chatsession_id as conversation_id for PostgreSQL
         conversation_history = await self._get_conversation_history(
-            session_id=effective_session_id,
+            session_id=session_id,
             history_enabled=history_enabled
         )
         
@@ -92,10 +90,10 @@ class ChatService:
         
         logger.info(f"Response generated ({len(response_text)} chars)")
         
-        # Cache the response using the effective session ID
-        if effective_session_id:
+        # Cache the response using the session ID
+        if session_id:
             await self.cache_service.save_response(
-                session_id=effective_session_id,
+                session_id=session_id,
                 query=query,
                 response_text=response_text,
                 used_indices=used_indices
@@ -103,7 +101,7 @@ class ChatService:
         
         return QueryResponse(
             user=user,
-            sessionId=effective_session_id or "",  # Return the effective session ID used
+            sessionId=session_id or "",  # Return the session ID used
             query=query,
             chatResponse=response_text,
             chartbase64Image=base64_image,

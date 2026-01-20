@@ -93,6 +93,76 @@ uvicorn main:app --reload --port 8000
 # NotesDigest only: cd notesdigest && uvicorn medical_notes.service.app:app --reload
 ```
 
+## Recent Improvements
+
+### 🧠 Intelligent Data Source Routing
+
+The chatbot now features **deterministic data source routing** that automatically chooses between RAG (vector search) and Elasticsearch based on user intent:
+
+**🔍 RAG-Only Mode** - Triggered by keywords:
+- `"raw data"`, `"original notes"`, `"unprocessed"`, `"embeddings"`
+- **Action**: Uses ONLY RAG tools (`extract_metadata_from_question` → `retrieve_context`)
+- **Benefit**: Direct access to clinical content via vector similarity search
+
+**📊 Elasticsearch-Only Mode** - Triggered by keywords:
+- `"how many"`, `"count"`, `"total"`, `"statistics"`, `"analytics"`
+- **Action**: Uses ONLY Elasticsearch tools for aggregations and counts
+- **Benefit**: Fast structured data analytics
+
+**🎯 Auto-Routing Mode** - For general queries:
+- **Strategy**: Try Elasticsearch first (faster), RAG as fallback if needed
+- **Benefit**: Optimal performance with comprehensive coverage
+
+**Key Benefits**:
+- ✅ No more mixed data sources in single responses
+- ✅ Respects explicit user data source preferences
+- ✅ Automatic routing for optimal performance
+- ✅ Enhanced logging shows which tools retrieved data
+
+### 🏗️ Three-Tier Caching System
+
+Robust caching architecture with automatic failover ensures the chatbot always works:
+
+```
+Tier 1: Redis (Fast, Shared) → Tier 2: PostgreSQL (Persistent) → Tier 3: In-Memory (Fallback)
+```
+
+**Tier 1 - Redis Cache**:
+- ⚡ Microsecond-fast access
+- 🔄 Shared across multiple app instances
+- 💾 Persistent across app restarts
+- ⏰ Automatic TTL expiration
+
+**Tier 2 - PostgreSQL Cache**:
+- 🗄️ Read existing conversations from database
+- 📖 UI team handles all writes (read-only for chatbot)
+- 📝 Automatic conversation summarization when >30 messages
+- 🔍 Historical conversation retrieval
+
+**Tier 3 - In-Memory Cache**:
+- 🛡️ Always available (no external dependencies)
+- 🚀 Local fallback when Redis/PostgreSQL fail
+- 📊 Built-in performance monitoring
+- 💪 Ensures zero downtime
+
+**Key Benefits**:
+- ✅ **Zero Downtime**: Chatbot works even when Redis/PostgreSQL fail
+- ✅ **Automatic Failover**: Seamless tier switching
+- ✅ **Performance Monitoring**: Hit rates and tier usage statistics
+- ✅ **Graceful Degradation**: Optimal performance regardless of service availability
+
+### 🔧 Enhanced Conversation Management
+
+**Optional Conversation ID**:
+- `chatsession_id` is **optional** when `historyenabled: false` (new conversations)
+- `chatsession_id` is **required** when `historyenabled: true` (loading history)
+- Maps to PostgreSQL `conversation_id` for persistence
+
+**Conversation History**:
+- Automatic summarization for conversations >30 messages
+- In-memory summarization (no database writes)
+- Smart context management without interfering with UI team operations
+
 ## Services Overview
 
 ### Chatbot Service (`/chatbot/*`)
@@ -100,12 +170,14 @@ uvicorn main:app --reload --port 8000
 **Purpose**: Natural language querying of clinical/business data with conversation history
 
 **Key Features**:
+- **Intelligent Data Source Routing**: Deterministic routing between RAG and Elasticsearch based on user intent
+- **Three-Tier Caching System**: Redis → PostgreSQL → In-Memory with automatic failover
 - Model Context Protocol (MCP) implementation for Claude AI
 - On-demand schema fetching (Claude requests schemas only when needed)
 - Smart query routing with PATH A/B/C/D logic for raw/processed data
-- Redis-based session caching with TTL
-- RAG support with PGVector embeddings
+- RAG support with PGVector embeddings and vector similarity search
 - User access control via Elasticsearch mapping
+- Conversation history with automatic summarization
 - Async architecture for concurrent requests
 - AWS Lambda deployment ready
 
@@ -197,9 +269,14 @@ ES_PASSWORD=your_password
 ES_INDEX_CLINICAL_NOTES=tiamd_clinical_notes
 ES_INDEX_PROCESSED_NOTES=tiamd_processed_notes
 
-# Redis Cache
+# Redis Cache (Three-Tier System)
 REDIS_URL=redis://redis:6379/0
 CACHE_TTL_SECONDS=3600
+MAX_RESPONSES_PER_SESSION=30
+
+# PostgreSQL (Conversation History & Vector Store)
+POSTGRES_CONNECTION=postgresql+psycopg://user:pass@host:5432/db
+COLLECTION_NAME=medical_notes_embeddings
 
 # Processing Configuration
 MAX_CONCURRENT_NOTES=10
@@ -214,16 +291,38 @@ EMBEDDINGS_MODEL=amazon.titan-embed-text-v2:0
 
 ## Usage Examples
 
-### Chatbot Queries
+### Chatbot Query Examples
 
 ```bash
-# Natural language query
-curl -X POST "http://localhost:8000/chatbot/v1/chat" \
+# RAG-only query (raw data)
+curl -X POST "http://localhost:8000/chatbot/query" \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "Show me all patients with diabetes from last month",
-    "user_id": "doctor123",
-    "session_id": "session_456"
+    "department": "TiaMD",
+    "user": "doctor123",
+    "chatquery": "give demographics for jennifer grant from raw data",
+    "historyenabled": false
+  }'
+
+# Analytics query (Elasticsearch-only)
+curl -X POST "http://localhost:8000/chatbot/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "department": "TiaMD", 
+    "user": "doctor123",
+    "chatquery": "how many patients were seen last month?",
+    "historyenabled": false
+  }'
+
+# General query with conversation history
+curl -X POST "http://localhost:8000/chatbot/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "department": "TiaMD",
+    "user": "doctor123", 
+    "chatquery": "tell me more about that patient",
+    "historyenabled": true,
+    "chatsession_id": "session-456"
   }'
 ```
 
@@ -267,14 +366,17 @@ python notesdigest/main.py --action health
 ## Data Flow
 
 ### Chatbot Query Flow
-1. User submits natural language query via REST API
-2. Chat service validates user access against Elasticsearch mapping
-3. MCP Server processes query and communicates with Claude via Bedrock
-4. Claude analyzes query and requests tools (schema fetching, data querying)
-5. Tools query Elasticsearch for relevant data
-6. Claude synthesizes results into natural language response
-7. Response cached in Redis for session continuity
-8. Final response returned with optional visualizations
+1. **Request Validation**: User submits query with optional conversation ID
+2. **Access Control**: System validates user access against Elasticsearch mapping  
+3. **Data Source Routing**: Intelligent routing based on user intent:
+   - RAG-only for "raw data" requests
+   - Elasticsearch-only for analytics queries
+   - Auto-routing for general queries
+4. **Cache Lookup**: Three-tier cache check (Redis → PostgreSQL → In-Memory)
+5. **MCP Processing**: Claude AI uses appropriate tools based on routing decision
+6. **Response Generation**: Natural language response with optional visualizations
+7. **Cache Update**: Response saved to all available cache tiers
+8. **Logging**: Comprehensive logging shows which data sources were used
 
 ### NotesDigest Processing Flow
 1. User submits note processing request
@@ -312,9 +414,11 @@ docker-compose up --build
 
 ## Monitoring & Health Checks
 
-- **Health Endpoints**: `/health` for each service
+- **Health Endpoints**: `/health` for each service with detailed component status
+- **Cache Monitoring**: Three-tier cache hit rates and performance statistics
+- **Data Source Tracking**: Logs show which tools (RAG vs Elasticsearch) retrieved data
 - **Metrics**: Token usage tracking, processing times, error rates
-- **Logging**: Structured JSON logging with correlation IDs
+- **Logging**: Structured JSON logging with correlation IDs and data source indicators
 - **Status Tracking**: Real-time job status for concurrent processing
 
 ## Security Features
@@ -328,12 +432,14 @@ docker-compose up --build
 
 ## Performance Optimizations
 
-- Async architecture for non-blocking I/O
-- Redis caching for session management
-- Concurrent job processing with configurable workers
-- Rate limiting to prevent API throttling
-- Connection pooling for database operations
-- Lazy loading of AI models and schemas
+- **Intelligent Data Routing**: Prevents mixing data sources for optimal performance
+- **Three-Tier Caching**: Redis → PostgreSQL → In-Memory with automatic failover
+- **Async Architecture**: Non-blocking I/O for concurrent request handling
+- **Conversation Summarization**: Automatic context management for long conversations
+- **Concurrent Job Processing**: Configurable workers for notes processing
+- **Rate Limiting**: Prevents API throttling with smart backoff
+- **Connection Pooling**: Optimized database and Redis connections
+- **Lazy Loading**: On-demand schema fetching and model initialization
 
 ## Testing
 
