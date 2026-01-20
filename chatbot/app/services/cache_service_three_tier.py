@@ -20,7 +20,6 @@ import json
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.services.postgres_cache_backend_improved import create_improved_postgres_cache_backend, ASYNCPG_AVAILABLE
 from app.services.conversation_summarizer import get_conversation_summarizer
 
 logger = get_logger(__name__)
@@ -33,8 +32,135 @@ except ImportError:
     REDIS_AVAILABLE = False
     logger.warning("redis package not installed. Redis caching disabled.")
 
+# Try to import asyncpg for PostgreSQL support
+try:
+    import asyncpg
+    from urllib.parse import urlparse
+    ASYNCPG_AVAILABLE = True
+except ImportError:
+    ASYNCPG_AVAILABLE = False
+    logger.warning("asyncpg package not installed. PostgreSQL caching disabled.")
 
-class InMemoryCacheBackend:
+
+class PostgreSQLCacheBackend:
+    """
+    Simple PostgreSQL cache backend for reading conversation history.
+    Reads from existing chatbot_messages table (UI team manages writes).
+    """
+    
+    def __init__(
+        self,
+        connection_string: str,
+        max_entries_per_session: int = 30,
+        table_name: str = "chatbot_messages"
+    ):
+        self.connection_string = connection_string
+        self.max_entries = max_entries_per_session
+        self.table_name = table_name
+        self._pool: Optional[asyncpg.Pool] = None
+    
+    async def _get_pool(self) -> asyncpg.Pool:
+        """Get or create connection pool."""
+        if self._pool is None:
+            parsed = urlparse(self.connection_string)
+            self._pool = await asyncpg.create_pool(
+                host=parsed.hostname,
+                port=parsed.port or 5432,
+                user=parsed.username,
+                password=parsed.password,
+                database=parsed.path.lstrip('/'),
+                min_size=2,
+                max_size=10
+            )
+            logger.info(f"✅ PostgreSQL pool created for table: {self.table_name}")
+        return self._pool
+    
+    async def get(self, conversation_id: str) -> Optional[List[Dict[str, Any]]]:
+        """Get conversation history from assistant rows only."""
+        try:
+            pool = await self._get_pool()
+            
+            # Convert conversation_id to int if it's numeric
+            try:
+                conv_id_param = int(conversation_id)
+            except (ValueError, TypeError):
+                conv_id_param = conversation_id
+            
+            query = f"""
+            SELECT query, response, created_at, id
+            FROM {self.table_name}
+            WHERE conversation_id = $1 
+              AND deleted_at IS NULL
+              AND role = 'assistant'
+              AND query IS NOT NULL
+              AND response IS NOT NULL
+            ORDER BY id ASC
+            LIMIT $2
+            """
+            
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(query, conv_id_param, self.max_entries)
+                
+                if not rows:
+                    return None
+                
+                messages = []
+                for row in rows:
+                    messages.append({
+                        'query': row['query'] or '',
+                        'response': row['response'] or '',
+                        'used_indices': [],  # Not stored in existing table
+                        'timestamp': row['created_at'].isoformat() if row['created_at'] else datetime.utcnow().isoformat(),
+                        'message_id': row['id']
+                    })
+                
+                logger.debug(f"Retrieved {len(messages)} Q&A pairs for conversation {conversation_id}")
+                return messages
+                
+        except Exception as e:
+            logger.error(f"PostgreSQL get error: {e}")
+            return None
+    
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get cache statistics from chatbot_messages table."""
+        try:
+            pool = await self._get_pool()
+            
+            query = f"""
+            SELECT 
+                COUNT(DISTINCT conversation_id) as total_conversations,
+                COUNT(*) FILTER (WHERE role = 'assistant') as total_qa_pairs,
+                COUNT(*) FILTER (WHERE role = 'user') as total_user_messages,
+                SUM(LENGTH(COALESCE(query, '') || COALESCE(response, ''))) as total_size_bytes,
+                MAX(created_at) as latest_message,
+                MIN(created_at) as earliest_message
+            FROM {self.table_name}
+            WHERE deleted_at IS NULL
+            """
+            
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(query)
+                
+                return {
+                    'backend': 'postgresql_simple',
+                    'table_name': self.table_name,
+                    'total_conversations': row['total_conversations'] or 0,
+                    'total_qa_pairs': row['total_qa_pairs'] or 0,
+                    'total_user_messages': row['total_user_messages'] or 0,
+                    'estimated_size_kb': round((row['total_size_bytes'] or 0) / 1024, 2),
+                    'latest_message': row['latest_message'].isoformat() if row['latest_message'] else None,
+                    'earliest_message': row['earliest_message'].isoformat() if row['earliest_message'] else None
+                }
+                
+        except Exception as e:
+            logger.error(f"PostgreSQL stats error: {e}")
+            return {'backend': 'postgresql_simple', 'error': str(e)}
+    
+    async def close(self) -> None:
+        """Close PostgreSQL connection pool."""
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
     """
     In-memory cache backend using deques.
     Provides local fallback when Redis and PostgreSQL are unavailable.
@@ -276,7 +402,7 @@ class ThreeTierCacheService:
         self.postgres_backend = None
         if ASYNCPG_AVAILABLE and settings.POSTGRES_CONNECTION:
             try:
-                self.postgres_backend = create_improved_postgres_cache_backend(
+                self.postgres_backend = PostgreSQLCacheBackend(
                     connection_string=settings.POSTGRES_CONNECTION,
                     max_entries_per_session=100,  # Read more from DB for summarization
                     table_name="chatbot_messages"
