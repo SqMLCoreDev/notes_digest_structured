@@ -270,6 +270,7 @@ CRITICAL REQUIREMENTS:
 - End with Consultation Information section.
 - CRITICAL:Use only hyphenated lists.
 - Avoid numbered lists.
+- **CRITICAL: This note is written BY the neurologist, not TO request neurology - never include "recommend neurology consult/evaluation" or similar referral language**
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 
 Output the complete progress note in the exact format specified."""
@@ -445,6 +446,8 @@ PLAN
 - EXCLUDE all non-neurological management (cardiac, pulmonary, renal, infectious disease, etc.)
 - EXCLUDE management plans from other specialties (cardiology, pulmonary, medicine, etc.)
 - Present Neurology plan recommended by the neurologist/neurology team ONLY
+- **DO NOT include statements like "Neurology evaluation recommendation", "Recommend neurology consult", "Neurology to evaluate", or similar referral language - the neurologist IS the author of this note**
+- **DO NOT include phrases suggesting neurology input is needed - write as the neurologist providing direct management**
 - Present only in hyphenated lists.
 - Do NOT group or categorize the plan items
 - Do NOT repeat information within this section - each point should be unique and distinct
@@ -456,6 +459,8 @@ PLAN
 - Maintain aspirin 325 mg and clopidogrel 75 mg daily for stroke prevention
 - Physical therapy and occupational therapy for left-sided weakness
 - Speech therapy evaluation for dysphagia assessment
+- Monitor for seizure activity and adjust antiepileptic medications as needed
+- Continue stroke rehabilitation protocol with daily therapy sessions
 
 **Examples of what to EXCLUDE from Plan:**
 - Continue lisinopril for blood pressure management (cardiology)
@@ -463,6 +468,11 @@ PLAN
 - Insulin sliding scale for diabetes (endocrine)
 - Diuretics for volume overload (cardiology/nephrology)
 - Oxygen therapy for hypoxia (pulmonary)
+- **Recommend neurology consultation for further evaluation (neurologist IS writing this note)**
+- **Neurology evaluation recommended for stroke workup (neurologist IS the author)**
+- **Suggest neurology follow-up for seizure management (this IS the neurology note)**
+- **Defer to neurology for management recommendations (you ARE neurology)**
+- **Await neurology input on antiepileptic adjustment (neurologist makes these decisions directly)**
 ---
 CONSULTATION INFORMATION
 - Attending Physician: [Name]
@@ -1139,6 +1149,7 @@ CRITICAL REQUIREMENTS:
 - Use ONLY information from the source records
 - No assumptions or invented data
 - Strictly factual clinical documentation
+- **CRITICAL: This note is written BY the neurologist, not TO request neurology - never include "recommend neurology consult/evaluation" or similar referral language**
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 Output the complete consultation note in the exact format specified."""
 
@@ -1397,6 +1408,14 @@ PLAN
 [prioritize Present neurological plan and management first, supported by chart data].
 - Do NOT repeat information within this section - each point should be unique and distinct.
 - Do NOT categorize the information and Do NOT add disposition details.
+
+**CRITICAL INSTRUCTIONS FOR PLAN SECTION:**
+- You are the NEUROLOGIST writing this consultation note
+- NEVER include "recommend neurology consult/evaluation" or similar phrases
+- NEVER recommend consulting yourself or your own specialty
+- Present YOUR neurological recommendations and management plan directly
+- Use active language: "Continue...", "Start...", "Monitor...", "Follow up..."
+- NOT passive language: "Recommend neurology to...", "Neurology consult for..."
 ---
 CONSULTATION INFORMATION
 - Attending Physician: [Name]
@@ -3009,8 +3028,8 @@ NOTE_TEMPLATES = {
     "neurology_consultation_note": neurology_consultation_note_template,
 
     # IM department notes
-    "im_progress_note": im_progress_note_template,
-    "im_consultation_note": im_consultation_note_template
+    # "im_progress_note": im_progress_note_template,
+    # "im_consultation_note": im_consultation_note_template
 }
 
 

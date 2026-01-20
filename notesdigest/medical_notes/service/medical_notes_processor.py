@@ -108,12 +108,12 @@ def normalize_note_type(note_type: str) -> str:
         "neurology_consult_notes": "neurology_consultation_note",
         
         # IM Progress note variants
-        "im_progress_note": "im_progress_note",
-        "im_progress_notes": "im_progress_note",
+        # "im_progress_note": "im_progress_note",
+        # "im_progress_notes": "im_progress_note",
         
         # IM Consultation note variants
-        "im_consult_note": "im_consultation_note",
-        "im_consult_notes": "im_consultation_note",
+        # "im_consult_note": "im_consultation_note",
+        # "im_consult_notes": "im_consultation_note",
         
         # History & Physical variants
         "history_physical": "history_physical",
@@ -173,9 +173,9 @@ def normalize_note_type(note_type: str) -> str:
         "op_follow_up_visit",
         "soap",
         "neurology_progress_note",
-        "neurology_consultation_note",
-        "im_progress_note",
-        "im_consultation_note"
+        "neurology_consultation_note"
+        # "im_progress_note",
+        # "im_consultation_note"
     }
 
     if normalized not in valid_types:
