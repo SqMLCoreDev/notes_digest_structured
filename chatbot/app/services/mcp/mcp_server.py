@@ -193,12 +193,12 @@ class MCPServer:
                 
                 # Enhanced logging for Elasticsearch results
                 if result.get('success'):
-                    hit_count = len(result.get('hits', []))
-                    total_hits = result.get('total', {}).get('value', 0)
+                    hit_count = len(result.get('documents', []))  # Fixed: ES client returns 'documents', not 'hits'
+                    total_hits = result.get('total_documents', 0)  # Fixed: ES client returns 'total_documents', not 'total'
                     if hit_count > 0:
                         logger.info(f"✅ ELASTICSEARCH TOOL: Found {hit_count} documents (total: {total_hits}) in {index}")
                         # Log first document preview for debugging
-                        first_doc = result.get('hits', [{}])[0].get('_source', {})
+                        first_doc = result.get('documents', [{}])[0]  # Fixed: 'documents' not 'hits'
                         preview_fields = {k: str(v)[:50] + "..." if len(str(v)) > 50 else v 
                                         for k, v in list(first_doc.items())[:3]}
                         logger.info(f"📄 ELASTICSEARCH PREVIEW: {preview_fields}")
@@ -695,12 +695,14 @@ EXECUTION RULES:
 - If RAG requested: Use RAG tools only.
 - If analytics requested: Use Elasticsearch tools only.
 - If general query:
-  1. Search Elasticsearch.
-  2. IF (Elasticsearch returns 0 results) OR (Elasticsearch returns wrong person):
-     **STOP! DO NOT ANSWER YET.**
-     **YOU MUST EXECUTE THE RAG TOOL (`extract_metadata_from_question`) IMMEDIATELY.**
-     (This is a mandatory fallback. Failure to call RAG when ES is empty is a system error.)
-  3. Only answer "Not Found" if BOTH engines return nothing.
+  1. Start with Elasticsearch - try ALL available indices:
+     a. First try tiamd_prod_processed_notes (structured/processed data)
+     b. If no results or wrong patient, try tiamd_prod_clinical_notes (raw clinical data)
+     c. You MUST try BOTH indices before moving to the next step
+  2. Only after trying BOTH Elasticsearch indices with 0 results OR wrong patient:
+     **YOU MUST EXECUTE THE RAG TOOL (`extract_metadata_from_question`).**
+  3. Do not say "Not Found" until you have tried: BOTH ES indices AND RAG.
+  4. Final Answer: You may CONSOLIDATE information from both sources IF AND ONLY IF they refer to the SAME patient/ID.
 - Never mention data source types to user
 """
         
