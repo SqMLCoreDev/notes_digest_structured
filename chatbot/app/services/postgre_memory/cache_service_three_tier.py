@@ -121,11 +121,14 @@ class ThreeTierCacheService:
         
         # 💾 TIER 1: Try In-Memory first (Fastest)
         try:
+            logger.debug(f"[TIER 1 CHECK] Looking for session_id='{session_id}' in memory. Current keys: {list(self.memory_cache.cache.keys())}")
             memory_responses = await self.memory_cache.get(session_id)
             if memory_responses:
                 self.tier_stats['memory_hits'] += 1
-                logger.debug(f"💾 Tier 1 (In-Memory) hit: {len(memory_responses)} responses for {session_id}")
+                logger.info(f"💾 Tier 1 (In-Memory) HIT: {len(memory_responses)} responses for session_id='{session_id}'")
                 return memory_responses
+            else:
+                logger.debug(f"[TIER 1 MISS] session_id='{session_id}' not found in memory")
         except Exception as e:
             logger.error(f"Tier 1 (In-Memory) error: {e}")
         
@@ -215,7 +218,8 @@ class ThreeTierCacheService:
         
         # Save to In-Memory (Tier 1)
         await self.memory_cache.add(session_id, entry)
-        logger.debug(f"💾 Saved to Tier 1 (In-Memory): {session_id}")
+        logger.info(f"💾 SAVED to Tier 1 (In-Memory): session_id='{session_id}', query='{query[:50]}...'")
+        logger.debug(f"[TIER 1 SAVE] Memory now has keys: {list(self.memory_cache.cache.keys())}")
         
         # Save to Redis (Tier 2)
         if self.redis_cache and self.redis_cache.is_available():
