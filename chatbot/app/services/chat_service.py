@@ -12,7 +12,7 @@ from app.core.logging import get_logger
 from app.core.exceptions import (
     MCPException, ValidationError, AuthorizationError, OpenSearchError
 )
-from app.services.cache_service_three_tier import ThreeTierCacheService as CacheService, get_cache_service
+from app.services.postgre_memory.cache_service_three_tier import ThreeTierCacheService as CacheService, get_cache_service
 from app.services.mcp.mcp_server import MCPServer, get_mcp_server
 from app.services.clients.es_client import OpenSearchClient
 from app.schema import QueryRequest, QueryResponse

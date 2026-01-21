@@ -3,6 +3,7 @@
 from app.services.clients.claude_client import ClaudeClient, get_claude_client
 from app.services.clients.es_client import OpenSearchClient
 from app.services.clients.pgvector_client import VectorStoreClient, get_vector_store_client
+from app.services.clients.postgres_client import PostgresClient, get_postgres_client
 
 __all__ = [
     'ClaudeClient',
@@ -10,4 +11,7 @@ __all__ = [
     'OpenSearchClient',
     'VectorStoreClient',
     'get_vector_store_client',
+    'PostgresClient',
+    'get_postgres_client',
 ]
+

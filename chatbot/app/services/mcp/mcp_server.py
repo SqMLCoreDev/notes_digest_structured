@@ -78,7 +78,7 @@ class MCPServer:
         conversation_history: Optional[List[Dict]] = None
     ) -> Dict[str, Any]:
         """
-        Analyze user query to detect data type, template, and identifier.
+        Analyze user query to detect template and identifier.
         Deterministic parsing using regex and keyword matching.
         
         Args:
@@ -89,34 +89,12 @@ class MCPServer:
             Dict with detected specifications
         """
         analysis = {
-            'data_type': None,
             'template': None,
             'identifier': None,
-            'identifier_type': None,
-            'execution_path': None
+            'identifier_type': None
         }
         
         query_lower = question.lower()
-        
-        # Detect Data Type
-        raw_keywords = ['raw', 'raw data', 'original', 'unprocessed', 
-                        'tiamd_prod_clinical_notes', 'tiamd_clinical_notes']
-        processed_keywords = ['processed', 'structured', 'parsed', 'formatted',
-                              'tiamd_prod_processed_notes', 'tiamd_processed_notes']
-        
-        if any(kw in query_lower for kw in raw_keywords):
-            analysis['data_type'] = 'raw'
-        elif any(kw in query_lower for kw in processed_keywords):
-            analysis['data_type'] = 'processed'
-        elif 'same' in query_lower and conversation_history:
-            for conv in reversed(conversation_history):
-                answer = conv.get('answer', '').lower()
-                if any(kw in answer for kw in raw_keywords):
-                    analysis['data_type'] = 'raw'
-                    break
-                elif any(kw in answer for kw in processed_keywords):
-                    analysis['data_type'] = 'processed'
-                    break
         
         # Detect Template
         template_keywords = {
@@ -172,18 +150,7 @@ class MCPServer:
                 analysis['identifier_type'] = 'name'
                 analysis['identifier'] = name_match.group(1)
         
-        # Determine Execution Path
-        if analysis['data_type'] and analysis['template']:
-            analysis['execution_path'] = 'A'
-        elif analysis['data_type'] and not analysis['template']:
-            analysis['execution_path'] = 'B'
-        elif not analysis['data_type'] and analysis['template']:
-            analysis['execution_path'] = 'C'
-        else:
-            analysis['execution_path'] = 'D'
-        
-        logger.debug(f"Query analysis: path={analysis['execution_path']}, "
-                     f"data_type={analysis['data_type']}, template={analysis['template']}")
+        logger.debug(f"Query analysis: template={analysis['template']}, identifier={analysis['identifier']}")
         
         return analysis
     
@@ -695,19 +662,6 @@ STEP 1: ANALYZE USER INTENT (Check for explicit keywords):
     ) -> str:
         """Build query analysis context for system prompt."""
         
-        # Determine index based on data type
-        index_to_use = None
-        if query_analysis.get('data_type') == 'raw':
-            for idx in ['tiamd_prod_clinical_notes', 'tiamd_clinical_notes']:
-                if idx in indices:
-                    index_to_use = idx
-                    break
-        elif query_analysis.get('data_type') == 'processed':
-            for idx in ['tiamd_prod_processed_notes', 'tiamd_processed_notes']:
-                if idx in indices:
-                    index_to_use = idx
-                    break
-        
         template_name = "note"
         if query_analysis.get('template') in patient_note_templates:
             template_name = patient_note_templates[query_analysis['template']]['name']
@@ -718,8 +672,6 @@ QUERY ANALYSIS RESULTS (CRITICAL - READ THIS FIRST)
 {'='*70}
 Pre-Parsed Detection from User Query:
 
-Execution Path: PATH {query_analysis['execution_path']}
-Data Type: {query_analysis.get('data_type') or 'NOT SPECIFIED'}
 Template: {query_analysis.get('template') or 'NOT SPECIFIED'}
 Identifier Type: {query_analysis.get('identifier_type') or 'NOT SPECIFIED'}
 Identifier Value: {query_analysis.get('identifier') or 'NOT SPECIFIED'}
