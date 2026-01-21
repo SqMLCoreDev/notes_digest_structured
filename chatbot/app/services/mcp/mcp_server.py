@@ -204,6 +204,8 @@ class MCPServer:
                         logger.info(f"📄 ELASTICSEARCH PREVIEW: {preview_fields}")
                     else:
                         logger.warning(f"⚠️ ELASTICSEARCH TOOL: No documents found in {index}")
+                        # INJECT MANDATORY FALLBACK INSTRUCTION
+                        result['system_instruction'] = "ELASTICSEARCH FOUND 0 RESULTS. FALLBACK REQUIRED: You MUST now use the 'extract_metadata_from_question' tool to search via RAG. Do not answer 'Not Found' yet."
                 else:
                     error_msg = result.get('error', 'Unknown error')
                     logger.error(f"❌ ELASTICSEARCH TOOL: Search failed - {error_msg}")
@@ -690,9 +692,15 @@ ROUTING STRATEGY:
 3. 🎯 Default to Elasticsearch-first for general queries
 
 EXECUTION RULES:
-- If RAG requested: Use RAG tools only (Elasticsearch fallback if RAG fails)
-- If analytics requested: Use Elasticsearch tools only
-- If general query: Try Elasticsearch first, RAG fallback if insufficient
+- If RAG requested: Use RAG tools only.
+- If analytics requested: Use Elasticsearch tools only.
+- If general query:
+  1. Search Elasticsearch.
+  2. IF (Elasticsearch returns 0 results) OR (Elasticsearch returns wrong person):
+     **STOP! DO NOT ANSWER YET.**
+     **YOU MUST EXECUTE THE RAG TOOL (`extract_metadata_from_question`) IMMEDIATELY.**
+     (This is a mandatory fallback. Failure to call RAG when ES is empty is a system error.)
+  3. Only answer "Not Found" if BOTH engines return nothing.
 - Never mention data source types to user
 """
         

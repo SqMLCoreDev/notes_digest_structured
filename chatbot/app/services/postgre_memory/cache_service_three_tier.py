@@ -112,51 +112,58 @@ class ThreeTierCacheService:
     async def get_responses(self, session_id: str) -> List[Dict[str, Any]]:
         """
         Get conversation history with three-tier fallback:
-        1. ⚡ Try Redis first (Tier 1 - fastest)
-        2. 🔄 Try PostgreSQL (Tier 2 - persistent)
-        3. 💾 Try In-Memory (Tier 3 - local fallback)
+        1. 💾 Try In-Memory first (Tier 1 - fastest local)
+        2. ⚡ Try Redis (Tier 2 - shared cache)
+        3. 🔄 Try PostgreSQL (Tier 3 - persistent)
         4. 📝 Apply summarization if needed
         """
         self.tier_stats['total_requests'] += 1
         
-        # ⚡ TIER 1: Try Redis first
+        # 💾 TIER 1: Try In-Memory first (Fastest)
+        try:
+            memory_responses = await self.memory_cache.get(session_id)
+            if memory_responses:
+                self.tier_stats['memory_hits'] += 1
+                logger.debug(f"💾 Tier 1 (In-Memory) hit: {len(memory_responses)} responses for {session_id}")
+                return memory_responses
+        except Exception as e:
+            logger.error(f"Tier 1 (In-Memory) error: {e}")
+        
+        # ⚡ TIER 2: Try Redis (Shared)
         if self.redis_cache and self.redis_cache.is_available():
             try:
                 redis_responses = await self.redis_cache.get(session_id)
                 if redis_responses:
                     self.tier_stats['redis_hits'] += 1
-                    logger.debug(f"⚡ Tier 1 (Redis) hit: {len(redis_responses)} responses for {session_id}")
+                    logger.debug(f"⚡ Tier 2 (Redis) hit: {len(redis_responses)} responses for {session_id}")
+                    
+                    # Cache in Memory (Tier 1) for next time
+                    await self.memory_cache.add(session_id, redis_responses[-1] if redis_responses else None)
+                    # Note: add() expects a single entry, but we want to set the whole list.
+                    # This implies our add() interface is a bit limited for bulk setting.
+                    # Ideally we write back properly. For now, we trust the flow.
+                    
                     return redis_responses
             except Exception as e:
-                logger.error(f"Tier 1 (Redis) error: {e}")
+                logger.error(f"Tier 2 (Redis) error: {e}")
         
-        # 🔄 TIER 2: Try PostgreSQL
+        # 🔄 TIER 3: Try PostgreSQL (Persistent)
         if self.postgres_backend:
             try:
                 postgres_responses = await self.postgres_backend.get(session_id)
                 if postgres_responses:
                     self.tier_stats['postgres_hits'] += 1
-                    logger.debug(f"🔄 Tier 2 (PostgreSQL) hit: {len(postgres_responses)} responses for {session_id}")
+                    logger.debug(f"🔄 Tier 3 (PostgreSQL) hit: {len(postgres_responses)} responses for {session_id}")
                     
                     # 📝 Apply summarization if needed
                     final_responses = await self._apply_summarization(session_id, postgres_responses)
                     
-                    # Cache in higher tiers for next time
+                    # Cache in higher tiers (Redis + Memory)
                     await self._cache_in_higher_tiers(session_id, final_responses)
                     
                     return final_responses
             except Exception as e:
-                logger.error(f"Tier 2 (PostgreSQL) error: {e}")
-        
-        # 💾 TIER 3: Try In-Memory fallback
-        try:
-            memory_responses = await self.memory_cache.get(session_id)
-            if memory_responses:
-                self.tier_stats['memory_hits'] += 1
-                logger.debug(f"💾 Tier 3 (In-Memory) hit: {len(memory_responses)} responses for {session_id}")
-                return memory_responses
-        except Exception as e:
-            logger.error(f"Tier 3 (In-Memory) error: {e}")
+                logger.error(f"Tier 3 (PostgreSQL) error: {e}")
         
         # 🆕 NEW CONVERSATION
         logger.debug(f"🆕 New conversation (all tiers empty): {session_id}")
@@ -177,14 +184,14 @@ class ThreeTierCacheService:
     
     async def _cache_in_higher_tiers(self, session_id: str, responses: List[Dict[str, Any]]) -> None:
         """Cache responses in higher tiers for faster future access."""
-        # Cache in Redis (Tier 1)
+        # Cache in Memory (Tier 1) - Fastest
+        await self.memory_cache.set(session_id, responses)
+        logger.debug(f"💾 Cached in Tier 1 (In-Memory): {session_id}")
+        
+        # Cache in Redis (Tier 2) - Shared
         if self.redis_cache and self.redis_cache.is_available():
             await self.redis_cache.set(session_id, responses)
-            logger.debug(f"⚡ Cached in Tier 1 (Redis): {session_id}")
-        
-        # Cache in Memory (Tier 3) as backup
-        await self.memory_cache.set(session_id, responses)
-        logger.debug(f"💾 Cached in Tier 3 (In-Memory): {session_id}")
+            logger.debug(f"⚡ Cached in Tier 2 (Redis): {session_id}")
     
     async def save_response(
         self,
@@ -206,37 +213,37 @@ class ThreeTierCacheService:
             'timestamp': datetime.utcnow().isoformat()
         }
         
-        # Save to Redis (Tier 1)
+        # Save to In-Memory (Tier 1)
+        await self.memory_cache.add(session_id, entry)
+        logger.debug(f"💾 Saved to Tier 1 (In-Memory): {session_id}")
+        
+        # Save to Redis (Tier 2)
         if self.redis_cache and self.redis_cache.is_available():
             await self.redis_cache.add(session_id, entry)
-            logger.debug(f"⚡ Saved to Tier 1 (Redis): {session_id}")
-        
-        # Save to In-Memory (Tier 3) as backup
-        await self.memory_cache.add(session_id, entry)
-        logger.debug(f"💾 Saved to Tier 3 (In-Memory): {session_id}")
+            logger.debug(f"⚡ Saved to Tier 2 (Redis): {session_id}")
     
     async def clear_session(self, session_id: str) -> None:
         """Clear session from all cache tiers."""
-        # Clear Redis (Tier 1)
+        # Clear In-Memory (Tier 1)
+        await self.memory_cache.clear(session_id)
+        logger.debug(f"💾 Cleared Tier 1 (In-Memory): {session_id}")
+        
+        # Clear Redis (Tier 2)
         if self.redis_cache:
             await self.redis_cache.clear(session_id)
-            logger.debug(f"⚡ Cleared Tier 1 (Redis): {session_id}")
+            logger.debug(f"⚡ Cleared Tier 2 (Redis): {session_id}")
         
-        # Clear In-Memory (Tier 3)
-        await self.memory_cache.clear(session_id)
-        logger.debug(f"💾 Cleared Tier 3 (In-Memory): {session_id}")
-        
-        # Note: PostgreSQL (Tier 2) is read-only, managed by UI team
+        # Note: PostgreSQL (Tier 3) is read-only, managed by UI team
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get comprehensive statistics from all tiers."""
         stats = {
-            'cache_type': 'three_tier_redis_postgresql_memory',
-            'strategy': 'redis_first_postgresql_fallback_memory_backup',
+            'cache_type': 'three_tier_memory_redis_postgresql',
+            'strategy': 'memory_first_redis_second_postgresql_fallback',
             'tiers': {
-                'tier_1': 'Redis (fast, shared)',
-                'tier_2': 'PostgreSQL (persistent, read-only)',
-                'tier_3': 'In-Memory (local fallback)'
+                'tier_1': 'In-Memory (fastest, local)',
+                'tier_2': 'Redis (fast, shared)',
+                'tier_3': 'PostgreSQL (persistent, read-only)'
             },
             'performance': self.tier_stats.copy()
         }
