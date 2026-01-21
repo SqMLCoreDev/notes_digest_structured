@@ -37,8 +37,6 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
-    # Allow access to external PostgreSQL
-    network_mode: "bridge"
 
   # Redis for session caching
   redis:
@@ -53,7 +51,6 @@ services:
       timeout: 5s
       retries: 3
     restart: unless-stopped
-    network_mode: "bridge"
 
 volumes:
   redis_data:

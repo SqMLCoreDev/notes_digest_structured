@@ -253,6 +253,37 @@ class RedisCacheBackend(CacheBackend):
         """Check if Redis is available."""
         return self._available
     
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get cache statistics from Redis."""
+        if not self._available:
+            return {"backend": "redis", "available": False}
+            
+        try:
+            client = await self._get_client()
+            info = await client.info()
+            
+            # Count keys with prefix
+            # Using SCAN instead of KEYS for safety in async redis
+            sessions_count = 0
+            async for _ in client.scan_iter(match=f"{self._key_prefix}*"):
+                sessions_count += 1
+                
+            return {
+                "backend": "redis",
+                "available": True,
+                "total_sessions": sessions_count,
+                "used_memory_human": info.get("used_memory_human", "0B"),
+                "connected_clients": info.get("connected_clients", 0),
+                "uptime_in_days": info.get("uptime_in_days", 0),
+                "keyspace_hits": info.get("keyspace_hits", 0),
+                "keyspace_misses": info.get("keyspace_misses", 0),
+                "max_entries_per_session": self.max_entries,
+                "ttl_seconds": self.ttl
+            }
+        except Exception as e:
+            logger.error(f"Redis stats error: {e}")
+            return {"backend": "redis", "available": False, "error": str(e)}
+
     async def close(self) -> None:
         """Close Redis connection."""
         if self._client:

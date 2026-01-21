@@ -263,18 +263,7 @@ class ThreeTierCacheService:
         
         # Redis stats
         if self.redis_cache:
-            try:
-                client = await self.redis_cache._get_client()
-                info = await client.info()
-                stats['tier_1_redis'] = {
-                    'available': self.redis_cache.is_available(),
-                    'connected_clients': info.get('connected_clients', 0),
-                    'used_memory_human': info.get('used_memory_human', '0B'),
-                    'keyspace_hits': info.get('keyspace_hits', 0),
-                    'keyspace_misses': info.get('keyspace_misses', 0)
-                }
-            except Exception as e:
-                stats['tier_1_redis'] = {'available': False, 'error': str(e)}
+            stats['tier_1_redis'] = await self.redis_cache.get_stats()
         else:
             stats['tier_1_redis'] = {'available': False, 'reason': 'not_configured'}
         
