@@ -597,34 +597,34 @@ Select the most appropriate index from: {', '.join(indices)}
         
         # Smart data source routing with explicit user intent detection
         smart_routing_text = """
-**🧠 DETERMINISTIC DATA SOURCE ROUTING 🧠**
+** DETERMINISTIC DATA SOURCE ROUTING **
 
 STEP 1: ANALYZE USER INTENT (Check for explicit keywords):
 
-🔍 **RAG-ONLY MODE** - User explicitly requests raw data:
+ **RAG-ONLY MODE** - User explicitly requests raw data:
 - Trigger words: "raw data", "RAG", "vector search", "embeddings", "original notes", "unprocessed"
 - MANDATORY ACTION: Use ONLY RAG tools (`extract_metadata_from_question` → `retrieve_context`)
 - FORBIDDEN: Do NOT use any Elasticsearch tools when RAG mode is triggered
 - If RAG returns data: Present RAG results ONLY
 - If RAG returns empty: Inform user that raw data is not available for this query
 
-📊 **ELASTICSEARCH-ONLY MODE** - User requests analytics/counts:
+ **ELASTICSEARCH-ONLY MODE** - User requests analytics/counts:
 - Trigger words: "how many", "count", "total", "average", "statistics", "trends", "analytics", "aggregate"
 - MANDATORY ACTION: Use ONLY Elasticsearch tools
 - FORBIDDEN: Do NOT use RAG tools for analytics queries
 
-🎯 **AUTO-ROUTING MODE** - General patient queries (no explicit data source):
+ **AUTO-ROUTING MODE** - General patient queries (no explicit data source):
 - Examples: "get notes for John Doe", "show patient demographics", "find information about"
 - Strategy: Try Elasticsearch FIRST (faster, structured data)
 - Fallback: If Elasticsearch returns insufficient/empty results → try RAG tools
 - Present the FIRST successful result - do not combine sources
 
 **CRITICAL ENFORCEMENT RULES:**
-1. 🚫 NEVER use both RAG and Elasticsearch in the same response
-2. 🚫 NEVER mix results from multiple data sources
-3. ✅ Use the FIRST tool that returns data successfully
-4. ✅ If user specifies a data source, respect that choice absolutely
-5. 🚫 NEVER ask user to choose data sources - route automatically
+1.  NEVER use both RAG and Elasticsearch in the same response
+2.  NEVER mix results from multiple data sources
+3.  Use the FIRST tool that returns data successfully
+4.  If user specifies a data source, respect that choice absolutely
+5.  NEVER ask user to choose data sources - route automatically
 
 **EXECUTION SEQUENCE:**
 - RAG Mode: extract_metadata_from_question → retrieve_context → STOP
@@ -687,9 +687,9 @@ ROUTING ANALYSIS:
 - Template: {template_name if query_analysis.get('template') else 'Natural format'}
 
 ROUTING STRATEGY:
-1. 🔍 Check if user explicitly requested RAG/raw data
-2. 📊 Check if user asked for analytics/counts  
-3. 🎯 Default to Elasticsearch-first for general queries
+1.  Check if user explicitly requested RAG/raw data
+2.  Check if user asked for analytics/counts  
+3.  Default to Elasticsearch-first for general queries
 
 EXECUTION RULES:
 - If RAG requested: Use RAG tools only.
@@ -729,7 +729,7 @@ EXECUTION RULES:
             },
             {
                 "name": "elasticsearch_search",
-                "description": "📊 ELASTICSEARCH TOOL: Search structured data in Elasticsearch indices. Use for general patient queries, demographics, processed notes, and when RAG tools are not explicitly requested. DO NOT use when user specifically asks for 'raw data' or 'original notes'.",
+                "description": " ELASTICSEARCH TOOL: Search structured data in Elasticsearch indices. Use for general patient queries, demographics, processed notes, and when RAG tools are not explicitly requested. DO NOT use when user specifically asks for 'raw data' or 'original notes'.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -744,7 +744,7 @@ EXECUTION RULES:
             },
             {
                 "name": "elasticsearch_aggregate",
-                "description": "📊 ELASTICSEARCH TOOL: Perform analytics and aggregations (counts, averages, statistics). Use ONLY for analytics queries like 'how many', 'count', 'total', 'average', 'statistics'. DO NOT use for individual patient data retrieval.",
+                "description": " ELASTICSEARCH TOOL: Perform analytics and aggregations (counts, averages, statistics). Use ONLY for analytics queries like 'how many', 'count', 'total', 'average', 'statistics'. DO NOT use for individual patient data retrieval.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -758,7 +758,7 @@ EXECUTION RULES:
             },
             {
                 "name": "elasticsearch_count",
-                "description": "📊 ELASTICSEARCH TOOL: Count documents for analytics. Use ONLY for counting queries like 'how many patients', 'total notes', etc. DO NOT use for individual patient data retrieval.",
+                "description": " ELASTICSEARCH TOOL: Count documents for analytics. Use ONLY for counting queries like 'how many patients', 'total notes', etc. DO NOT use for individual patient data retrieval.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -792,7 +792,7 @@ EXECUTION RULES:
             # RAG Tools for raw patient data retrieval
             {
                 "name": "extract_metadata_from_question",
-                "description": "🔍 RAG TOOL: Extract metadata from questions about RAW PATIENT DATA ONLY. Use ONLY when user explicitly requests 'raw data', 'original notes', 'unprocessed data', or when in RAG-ONLY mode. This is the FIRST step for retrieving patient records from vector store. DO NOT use for analytics or count queries.",
+                "description": " RAG TOOL: Extract metadata from questions about RAW PATIENT DATA ONLY. Use ONLY when user explicitly requests 'raw data', 'original notes', 'unprocessed data', or when in RAG-ONLY mode. This is the FIRST step for retrieving patient records from vector store. DO NOT use for analytics or count queries.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -806,7 +806,7 @@ EXECUTION RULES:
             },
             {
                 "name": "retrieve_context",
-                "description": "📋 RAG TOOL: Retrieve actual RAW PATIENT DATA from vector store. Use ONLY after extract_metadata_from_question and ONLY for raw data requests. This tool returns actual clinical content, patient records, and medical documentation from the vector database. DO NOT use for analytics, counts, or statistics.",
+                "description": " RAG TOOL: Retrieve actual RAW PATIENT DATA from vector store. Use ONLY after extract_metadata_from_question and ONLY for raw data requests. This tool returns actual clinical content, patient records, and medical documentation from the vector database. DO NOT use for analytics, counts, or statistics.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
