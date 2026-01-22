@@ -211,16 +211,6 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
-
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI

@@ -226,16 +226,7 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI
@@ -244,7 +235,7 @@ FORMATTING:
 - No unnecessary spacing
 - Clean, clinical, consistent
 - Do NOT use hash symbols or asterisks for section headers or emphasis
-- Do NOT add a separate "Disposition" section or any final "Disposition" statement; end after the SIGNATURE INFORMATION section.
+- Do NOT add a separate "Disposition" section or any final "Disposition" statement; end after the CONSULTATION INFORMATION section.
 
 Medical Note to Process:
 {full_text}"""
@@ -487,16 +478,6 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
-
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI
@@ -505,7 +486,7 @@ FORMATTING:
 - No unnecessary spacing
 - Clean, clinical, consistent
 - Do NOT use hash symbols or asterisks for section headers or emphasis
-- Do NOT add a separate "Disposition" section or any final "Disposition" statement; end after the SIGNATURE INFORMATION section.
+- Do NOT add a separate "Disposition" section or any final "Disposition" statement; end after the CONSULTATION INFORMATION section.
 
 Medical Note to Process:
 {full_text}"""
@@ -738,16 +719,7 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI
@@ -756,7 +728,7 @@ FORMATTING:
 - No unnecessary spacing
 - Clean, clinical, consistent
 - Do NOT use hash symbols or asterisks for section headers or emphasis
-- Do NOT add a separate "Disposition" section or any final "Disposition" statement; end after the SIGNATURE INFORMATION section.
+- Do NOT add a separate "Disposition" section or any final "Disposition" statement; end after the CONSULTATION INFORMATION section.
 
 Medical Note to Process:
 {full_text}"""
@@ -850,16 +822,7 @@ ASSESSMENT AND PLAN
 2. [Secondary diagnoses and plans]
 [Continue for all active issues]
 
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 Medical Note to Process:
 {full_text}"""
@@ -1150,16 +1113,7 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI
@@ -1467,16 +1421,7 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI
@@ -1775,16 +1720,7 @@ CONSULTATION INFORMATION
 - Attending Physician: [Name]
 - Consulting Neurologist: [Name]
 *[Date/Time]*
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 FORMATTING:
 - Full sentences for HPI
@@ -1880,16 +1816,7 @@ Patient Education: [Instructions provided to patient]
 Disposition: [Admit, discharge, transfer plans]
 Code Status: [If documented]
 
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 Use only information from the provided clinical data. Do not add assumptions or invented information.
 
@@ -2007,16 +1934,7 @@ Pending Results: [Tests pending at discharge that need follow-up]
 PATIENT EDUCATION
 [Topics discussed with patient/family, educational materials provided, understanding verified]
 
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 Use only information from the provided clinical data. Do not add assumptions or invented information.
 
@@ -2152,16 +2070,7 @@ Pathology/Lab Follow-up: [Pending results to follow up]
 DISPOSITION
 [Disposition after procedure: to recovery, to floor, to ICU, discharged]
 
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 Use only information from the provided clinical data. Do not add assumptions or invented information.
 
@@ -2242,24 +2151,24 @@ Social History: [Smoking, alcohol, drug use]
 Family History: [Relevant for acute presentation]
 
 REVIEW OF SYSTEMS
-Constitutional: [Fever, chills, weight loss]
-Cardiovascular: [Chest pain, palpitations]
-Respiratory: [Dyspnea, cough]
-Gastrointestinal: [Nausea, vomiting, diarrhea, abdominal pain]
-Genitourinary: [Dysuria, hematuria]
-Neurological: [Headache, weakness, numbness]
-[Other pertinent systems]
+- Constitutional: [Fever, chills, weight loss]
+- Cardiovascular: [Chest pain, palpitations]
+- Respiratory: [Dyspnea, cough]
+- Gastrointestinal: [Nausea, vomiting, diarrhea, abdominal pain]
+- Genitourinary: [Dysuria, hematuria]
+- Neurological: [Headache, weakness, numbness]
+- [Other pertinent systems]
 
 PHYSICAL EXAMINATION
-Time of Examination: [Time]
-Vital Signs: [Temp, BP, HR, RR, O2 sat, pain score]
-General: [Appearance, distress level, mental status]
-HEENT: [Head, eyes, ears, nose, throat examination]
-Neck: [Examination findings]
-Cardiovascular: [Heart examination]
-Respiratory: [Lung examination]
-Abdomen: [Abdominal examination]
-Extremities: [Examination of extremities]
+- Time of Examination: [Time]
+- Vital Signs: [Temp, BP, HR, RR, O2 sat, pain score]
+- General: [Appearance, distress level, mental status]
+- HEENT: [Head, eyes, ears, nose, throat examination]
+- Neck: [Examination findings]
+- Cardiovascular: [Heart examination]
+- Respiratory: [Lung examination]
+- Abdomen: [Abdominal examination]
+- Extremities: [Examination of extremities]
 Neurological: [Mental status, cranial nerves, motor, sensory, reflexes, gait, coordination]
 Skin: [Rashes, wounds, color]
 Psychiatric: [Mood, affect, behavior if relevant]
@@ -2319,16 +2228,7 @@ PRESCRIPTIONS PROVIDED
 PATIENT EDUCATION
 [Topics discussed, instructions given, written materials provided]
 
----
 
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 Use only information from the provided clinical data. Do not add assumptions or invented information.
 
@@ -2452,17 +2352,6 @@ PATIENT INSTRUCTIONS
 
 TIME SPENT
 [Total encounter time and time spent on counseling/coordination if documented]
-
----
-
-SIGNATURE INFORMATION
-- Electronically Signed By: [Signer name, credentials] at [MM/DD/YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [MM/DD/YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-*Extract ALL signature information from the source records including names, credentials, dates, and times*
-*If cosignature is not present, omit that line*
----
 
 Use only information from the provided clinical data. Do not add assumptions or invented information. Adapt the note structure based on what information is available in the source records.
 
@@ -3246,17 +3135,6 @@ Cross-reference the Plan section to ensure:
 
 ---
 
-SIGNATURE INFORMATION
-
-- Electronically Signed By: [Signer name, credentials] at [DD Mon YYYY HH:MM AM/PM]
-- Cosigned By: [Cosigner name, credentials] at [DD Mon YYYY HH:MM AM/PM] (if applicable)
-- Additional Signatories: [List if multiple signatures present]
-
-Extract ALL signature information from the source records including names, credentials, dates, and times.
-If cosignature is not present, omit that line.
-
----
-
 FORMATTING STANDARDS:
 - Use clear section headers exactly as shown above
 - Maintain consistent date format throughout: DD Mon YYYY (or Mon YYYY, or YYYY minimum)
@@ -3298,7 +3176,6 @@ Before finalizing, verify:
 - Cautious medical language maintained ("supportive of," "consistent with," "appears to be")
 - Patient voice preserved ("she says," "he reports," "patient feels")
 - Treatment trials clearly documented (attempt → outcome → reason for change)
-- Signature information extracted completely
 - NO asterisks, hashtags, or formatting symbols used anywhere in output
 - Problem names in Assessment written in plain text without formatting
 
