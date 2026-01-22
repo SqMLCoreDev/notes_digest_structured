@@ -150,6 +150,8 @@ def normalize_note_type(note_type: str) -> str:
         "general": "generic_note",
         
         # OP Follow-up Visit variants
+        "op_followup_visit": "op_follow_up_visit",
+        "OP_Followup_Visit": "op_follow_up_visit",
         "op_follow_up_visit": "op_follow_up_visit",
         "OP_Followup_visit_note": "op_follow_up_visit",
 
