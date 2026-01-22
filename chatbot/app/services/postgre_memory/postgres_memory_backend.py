@@ -35,13 +35,20 @@ class PostgresMemoryBackend(CacheBackend):
         """
         Get conversation history from assistant rows only.
         Each assistant row contains both query and response columns.
+        
+        Note: The database conversation_id is bigint, but we receive string session IDs.
+        We'll try to convert to int, and if that fails, we'll return None (no history).
         """
         try:
-            # Convert conversation_id to int if it's numeric
+            # The database conversation_id is bigint, so we need to convert string to int
             try:
                 conv_id_param = int(conversation_id)
+                logger.debug(f"Converted session_id '{conversation_id}' to conversation_id {conv_id_param}")
             except ValueError:
-                conv_id_param = conversation_id  # Keep as string if not numeric
+                # If session_id is not numeric (e.g., "test-session-123"), 
+                # we can't find it in the database since conversation_id is bigint
+                logger.debug(f"Session_id '{conversation_id}' is not numeric, cannot query bigint conversation_id")
+                return None
             
             # Get only assistant messages, they contain both query and response
             query = f"""
@@ -59,6 +66,7 @@ class PostgresMemoryBackend(CacheBackend):
             rows = await self.client.fetch(query, conv_id_param, self.max_entries)
             
             if not rows:
+                logger.debug(f"No conversation history found for conversation_id: {conv_id_param}")
                 return None
             
             # Build Q&A pairs from assistant rows
@@ -72,11 +80,11 @@ class PostgresMemoryBackend(CacheBackend):
                     'message_id': row['id']
                 })
             
-            logger.debug(f"Retrieved {len(qa_pairs)} Q&A pairs from assistant rows for conversation {conversation_id}")
+            logger.info(f"✅ Retrieved {len(qa_pairs)} Q&A pairs from PostgreSQL for conversation_id {conv_id_param}")
             return qa_pairs
             
         except Exception as e:
-            logger.error(f"PostgreSQL Memory get error: {e}")
+            logger.error(f"PostgreSQL Memory get error for session_id '{conversation_id}': {e}")
             return None
     
     async def add(self, conversation_id: str, entry: Dict[str, Any]) -> None:
