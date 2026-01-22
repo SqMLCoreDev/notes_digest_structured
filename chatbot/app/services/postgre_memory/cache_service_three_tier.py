@@ -75,12 +75,12 @@ class ThreeTierCacheService:
                 pg_client = get_postgres_client(connection_string=settings.POSTGRES_CONNECTION)
                 
                 # # Initialize specific memory backend
-                # self.postgres_backend = PostgresMemoryBackend(
-                #     postgres_client=pg_client,
-                #     max_entries_per_session=100,
-                #     table_name="chatbot_messages"
-                # )
-                # logger.info("✅ Tier 2: PostgreSQL cache initialized (read-only)")
+                self.postgres_backend = PostgresMemoryBackend(
+                     postgres_client=pg_client,
+                     max_entries_per_session=100,
+                     table_name="chatbot_messages"
+                )
+                logger.info("✅ Tier 2: PostgreSQL cache initialized (read-only)")
             except Exception as e:
                 logger.warning(f"❌ Tier 2: PostgreSQL initialization failed: {e}")
         

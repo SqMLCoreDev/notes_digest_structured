@@ -80,7 +80,7 @@ class VectorStoreClient:
     def similarity_search_sync(
         self, 
         query: str, 
-        k: int = 2, 
+        k: int = 4, 
         filter: Optional[Dict] = None
     ) -> List[Any]:
         """
@@ -103,7 +103,7 @@ class VectorStoreClient:
     async def similarity_search(
         self, 
         query: str, 
-        k: int = 2, 
+        k: int = 4, 
         filter: Optional[Dict] = None
     ) -> List[Any]:
         """
@@ -142,7 +142,7 @@ class VectorStoreClient:
             # Perform similarity search
             retrieved_docs = await self.similarity_search(
                 query=query,
-                k=2,
+                k=4,
                 filter=metadata
             )
             
