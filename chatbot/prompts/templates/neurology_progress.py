@@ -15,6 +15,7 @@ CRITICAL RULES:
 - No assumptions, no invented data
 - No truncation of any lists (medications, history, etc.)
 - Strictly factual clinical documentation.
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, use it. If not, if "FIN" is present, use "FIN" value. If neither is available, omit the field.
 - CRITICAL:Use only hyphenated lists.
 - Avoid numbered lists.
 - If any required information is missing from the source records, omit the relevant fields
@@ -26,7 +27,7 @@ NEUROLOGY PROGRESS NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]

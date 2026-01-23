@@ -58,6 +58,7 @@ NOTE TYPES (return exactly one):
 - progress_note: Daily hospital update
 - procedure_note: Procedure documentation
 - ed_note: Emergency department visit
+- op_followup_visit: OP Followup Visit
 - generic_note: Other/mixed content
 
 MRN EXTRACTION RULES:(return full mrn value)
@@ -118,9 +119,10 @@ PATIENT_MRN: <complete_mrn_value>"""
         for line in response_text.split('\n'):
             line = line.strip()
             if line.startswith('NOTE_TYPE:'):
-                note_type = line.split(':', 1)[1].strip().lower()
+                note_type = line.split(':', 1)[1].strip().lower().replace(" ", "_")
                 valid_types = ['history_physical', 'discharge_summary', 'consultation_note',
-                             'progress_note', 'procedure_note', 'ed_note', 'generic_note']
+                             'progress_note', 'procedure_note', 'ed_note', 
+                             'op_followup_visit', 'op_follow_up_visit', 'generic_note']
                 if note_type not in valid_types:
                     note_type = 'generic_note'
                 

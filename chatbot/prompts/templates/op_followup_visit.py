@@ -61,6 +61,7 @@ CRITICAL RULES:
 - Use only plain text with hyphenated lists
 - Do NOT use double asterisks, single asterisks, or any emphasis formatting
 - Problem names in Assessment should be written in plain text without any formatting
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, use it. If not, if "FIN" is present, use "FIN" value. If neither is available, omit the field.
 
 DOCUMENT STRUCTURE:
 
@@ -71,7 +72,7 @@ PATIENT INFORMATION:
 
 - Name: [Full patient name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth in DD Mon YYYY format]
 - Age: [Current age in years]
 - Sex: [Male/Female/Other]

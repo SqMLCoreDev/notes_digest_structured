@@ -28,6 +28,7 @@ CRITICAL REQUIREMENTS:
 - End with Consultation Information section.
 - CRITICAL:Use only hyphenated lists.
 - Avoid numbered lists.
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 
 Output the complete progress note in the exact format specified."""
@@ -50,7 +51,7 @@ PROGRESS NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -271,6 +272,7 @@ CRITICAL REQUIREMENTS:
 - CRITICAL:Use only hyphenated lists.
 - Avoid numbered lists.
 - **CRITICAL: This note is written BY the neurologist, not TO request neurology - never include "recommend neurology consult/evaluation" or similar referral language**
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 
 Output the complete progress note in the exact format specified."""
@@ -293,7 +295,7 @@ NEUROLOGY PROGRESS NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -521,6 +523,7 @@ CRITICAL REQUIREMENTS:
 - End with Consultation Information section.
 - CRITICAL:Use only hyphenated lists.
 - Avoid numbered lists.
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 
 Output the complete progress note in the exact format specified."""
@@ -543,7 +546,7 @@ IM PROGRESS NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -755,6 +758,7 @@ CRITICAL REQUIREMENTS:
 - Use ONLY information from the source records
 - No assumptions or invented data
 - Strictly factual clinical documentation
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 
 Output the complete history and physical note in the exact format specified."""
@@ -773,7 +777,7 @@ DOCUMENT STRUCTURE:
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -850,6 +854,7 @@ CRITICAL REQUIREMENTS:
 - Use ONLY information from the source records
 - No assumptions or invented data
 - Strictly factual clinical documentation
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 Output the complete consultation note in the exact format specified."""
 
@@ -874,7 +879,7 @@ CONSULTATION NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -1150,6 +1155,7 @@ CRITICAL REQUIREMENTS:
 - No assumptions or invented data
 - Strictly factual clinical documentation
 - **CRITICAL: This note is written BY the neurologist, not TO request neurology - never include "recommend neurology consult/evaluation" or similar referral language**
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 Output the complete consultation note in the exact format specified."""
 
@@ -1174,7 +1180,7 @@ NEUROLOGY CONSULTATION NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -1457,6 +1463,7 @@ CRITICAL REQUIREMENTS:
 - Use ONLY information from the source records
 - No assumptions or invented data
 - Strictly factual clinical documentation
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 Output the complete consultation note in the exact format specified."""
 
@@ -1481,7 +1488,7 @@ IM CONSULTATION NOTE
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -1765,6 +1772,7 @@ CRITICAL REQUIREMENTS:
 - Plain text output suitable for clinical use
 - Strictly factual clinical documentation
 - Include all relevant clinical details without omission
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 """
 
@@ -1782,7 +1790,7 @@ Format the output with clear section headers:
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -1855,6 +1863,7 @@ CRITICAL REQUIREMENTS:
 - Clear discharge instructions
 - Professional medical documentation format
 - Strictly factual clinical documentation
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 """
 
@@ -1872,7 +1881,7 @@ Format the output with clear section headers:
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -1973,6 +1982,7 @@ CRITICAL REQUIREMENTS:
 - Clear post-procedure instructions
 - Professional medical documentation format
 - Strictly factual clinical documentation
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 """
 
@@ -1990,7 +2000,7 @@ Format the output with clear section headers:
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -2109,6 +2119,7 @@ CRITICAL REQUIREMENTS:
 - Clear disposition and follow-up
 - Professional medical documentation format
 - Strictly factual clinical documentation
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 """
 
@@ -2126,7 +2137,7 @@ Format the output with clear section headers:
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -2267,6 +2278,7 @@ CRITICAL REQUIREMENTS:
 - Professional medical documentation format
 - Strictly factual clinical documentation
 - Organize information logically
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
 - **CRITICAL**: OUTPUT MUST NOT CONTAIN HASH OR ASTERISK SYMBOLS
 """
 
@@ -2284,7 +2296,7 @@ Format the output with clear section headers (include only sections with availab
 PATIENT INFORMATION
 - Name: [Patient Name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth]
 - Age: [Age]
 - Sex: [Sex]
@@ -2381,7 +2393,9 @@ CRITICAL REQUIREMENTS:
 - Strictly factual clinical documentation
 - PATIENT NAME EXTRACTION: Look for patient name in headers, patient information sections, or anywhere it appears in the medical record. Common patterns include "Patient Name:", "Name:", or patient identification sections.
 
-Output the complete notes digest in the exact JSON format specified. Return ONLY valid JSON - no additional text, explanations, or formatting."""
+Output the complete notes digest in the exact JSON format specified. Return ONLY valid JSON - no additional text, explanations, or formatting.
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
+"""
 
     prompt = f"""You are processing medical records to create a comprehensive patient digest in JSON format matching the PreVisitBrief interface.
 
@@ -2572,7 +2586,7 @@ Field descriptions:
 - impression: Clinical impression, assessment, and diagnostic conclusions
 - medications: Medications organized by status with four arrays: "past" (past medications), "current" (current/scheduled medications), "infusing" (medications being infused), and "PRN" (as-needed medications). Each medication object contains: medication_name (generic/brand), dosage (strength and amount), route (Oral, Topical, Injection, Ophthalmic, etc.), frequency (how often - e.g., Daily, BID, q6h, q8h), duration (length of treatment if mentioned), quantity (number of pills/refills if mentioned), instructions (special instructions like with food, Both Eyes, etc.), indication (what condition it treats if mentioned), formatted_prescription (e.g., 'Amlopres 5 mg tab Oral, 0-0-1 (for 30 days)'), sig_format (standard pharmacy SIG format, e.g., 'Take 1 tablet by mouth once daily at bedtime for 30 days'). Extract ALL medications mentioned in the record. Include all available information for each medication.
 - demographics: Patient demographics including name, age, gender, date of birth, MRN, and other identifiers. CRITICAL: Extract the patient's full name from the medical record - look for "Patient Name:", "Name:", patient headers, or identification sections. If patient name is clearly stated anywhere in the record, include it in the Patientname field.
-- identifiers: Medical record numbers, patient IDs, and other identifying information (optional)
+- identifiers: Medical record numbers, patient IDs (CSN/FIN), and other identifying information (optional). If CSN is present, use it; else if FIN is present, use FIN; else leave empty.
 - overview: Overall patient summary and key highlights (optional)
 - chief_complaint: Primary reason for visit or chief complaint
 - history_of_present_illness: Detailed history of the current illness or presenting problem
@@ -2718,7 +2732,9 @@ CRITICAL REQUIREMENTS:
 - Do NOT use bold, italics, or any text emphasis markers
 - Use only plain text with hyphenated lists
 
-Output the complete outpatient follow-up visit note in the exact format specified."""
+Output the complete outpatient follow-up visit note in the exact format specified.
+- **CSN/FIN Extraction**: If "CSN" is present in the source record, include it. If "CSN" is missing but "FIN" is present, use its value. If neither is found, omit the field.
+"""
 
     prompt = f"""You are preparing a formal OUTPATIENT FOLLOW-UP VISIT MEDICAL NOTE.
 
@@ -2783,7 +2799,7 @@ PATIENT INFORMATION:
 
 - Name: [Full patient name]
 - MRN: [Medical Record Number]
-- CSN: [Contact Serial Number]
+- CSN: [Contact Serial Number / FIN]
 - DOB: [Date of Birth in DD Mon YYYY format]
 - Age: [Current age in years]
 - Sex: [Male/Female/Other]
