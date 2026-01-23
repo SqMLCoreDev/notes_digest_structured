@@ -1,1 +1,0 @@
-# Routes package for Medical Notes API
