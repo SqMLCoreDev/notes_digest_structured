@@ -39,17 +39,19 @@ async def root():
             "concurrent_processing": f"Process up to {MAX_CONCURRENT_NOTES} notes simultaneously",
             "rate_limiting": "AWS Bedrock API rate limiting to prevent service overload",
             "queue_management": f"Queue up to {MAX_QUEUE_SIZE} jobs with automatic overflow protection",
-            "mrn_extraction": "Automatically extracts patient MRN from raw text using LLM",
+            "identifiers_extraction": "Automatically extracts patient identifiers (MRN, CSN, FIN) from raw text using LLM",
             "historical_context": f"Fetches {N_PREVIOUS_VISITS} previous visit(s) by dateOfService (not noteId sequence)",
             "date_based_query": "Previous visits are fetched based on dateOfService < current_date for the same MRN"
         },
         "processing_logic": {
-            "on_success": "status='processed' in both indices, patientMRN updated, historical context included",
+            "on_success": "status='processed' in both indices, patient identifiers (MRN, CSN, FIN) updated, historical context included",
             "on_failure": "status='' (unchanged) in clinical_notes, record pushed to processed_notes with issues",
             "concurrent_behavior": "Each note processes independently - one failure doesn't affect others"
         },
         "tracking_fields": {
             "patientMRN": "Extracted patient MRN (updated in tiamd_prod_clinical_notes)",
+            "csn": "Extracted patient CSN - Contact Serial Number (updated in tiamd_prod_clinical_notes)",
+            "fin": "Extracted patient FIN - Financial Number (updated in tiamd_prod_clinical_notes)",
             "dateOfServiceEpoch": "Date of service in epoch milliseconds format",
             "processedDateTime": "Timestamp when data was processed",
             "processingIssues": "Issues during processing (empty if none)",
@@ -106,8 +108,8 @@ async def root():
         "processing_stages": [
             "1. validation - Check noteId exists and not processed",
             "2. fetch - Fetch noteId, rawdata, dateOfService",
-            "3. extraction - Extract note type AND patient MRN using LLM",
-            "4. update_mrn - Update patientMRN and dateOfServiceEpoch in tiamd_prod_clinical_notes",
+            "3. extraction - Extract note type AND patient identifiers (MRN, CSN, FIN) using LLM",
+            "4. update_identifiers - Update patient identifiers (MRN, CSN, FIN) and dateOfServiceEpoch in tiamd_prod_clinical_notes",
             f"5. historical_context - Fetch {N_PREVIOUS_VISITS} previous visit(s) by dateOfService from tiamd_prod_processed_notes",
             "6. combine_context - Combine previous visits' notesProcessedText with current rawdata",
             "7. data_extraction - Extract structured data using unified template system (includes SOAP generation)",

@@ -158,6 +158,7 @@ def add_log(job_id: str, stage: str, status: str, message: str):
 
 def push_failed_record_to_processed_notes(job_id: str, note_id: str, note_data: dict, 
                                           note_type: Optional[str], patient_mrn: Optional[str],
+                                          patient_csn: Optional[str], patient_fin: Optional[str],
                                           llm_processing_issues: List[str]):
     """
     Push a record to tiamd_prod_processed_notes when processing fails
@@ -169,6 +170,8 @@ def push_failed_record_to_processed_notes(job_id: str, note_id: str, note_data: 
         note_data: Original note data from tiamd_prod_clinical_notes
         note_type: Note type (if extracted, else None)
         patient_mrn: Patient MRN (if extracted, else None)
+        patient_csn: Patient CSN (if extracted, else None)
+        patient_fin: Patient FIN (if extracted, else None)
         llm_processing_issues: List of LLM-related issues encountered
     """
     try:
@@ -177,6 +180,10 @@ def push_failed_record_to_processed_notes(job_id: str, note_id: str, note_data: 
         
         add_log(job_id, "push_failed_record", "in_progress", 
                 "Pushing failed record to tiamd_prod_processed_notes with LLM processingIssues")
+        
+        # Add CSN and FIN to note_data before preparing record
+        note_data['csn'] = patient_csn or ''
+        note_data['fin'] = patient_fin or ''
         
         # Prepare record with empty/null processed fields
         es_record = prepare_es_record(
@@ -244,14 +251,17 @@ def update_submit_tracking(note_id: str, composite_key: str, submit_datetime: st
         return False
 
 
-def update_patient_mrn_in_clinical_notes(job_id: str, note_id: str, patient_mrn: str, date_of_service: str):
+def update_patient_identifiers_in_clinical_notes(job_id: str, note_id: str, patient_mrn: str, 
+                                                   patient_csn: str, patient_fin: str, date_of_service: str):
     """
-    Update patientMRN and dateOfServiceEpoch in tiamd_prod_clinical_notes index
+    Update patientMRN, csn, fin, and dateOfServiceEpoch in tiamd_prod_clinical_notes index
     
     Args:
         job_id: Job ID for logging
         note_id: The noteId
-        patient_mrn: Extracted patient MRN
+        patient_mrn: Extracted patient MRN (empty string if not found)
+        patient_csn: Extracted patient CSN (empty string if not found)
+        patient_fin: Extracted patient FIN (empty string if not found)
         date_of_service: Date of service to parse
     
     Returns:
@@ -260,8 +270,19 @@ def update_patient_mrn_in_clinical_notes(job_id: str, note_id: str, patient_mrn:
     try:
         from medical_notes.repository.elastic_search import update_from_dataframe
         
-        add_log(job_id, "update_mrn", "in_progress", 
-                f"Updating patientMRN='{patient_mrn}' and dateOfServiceEpoch in tiamd_prod_clinical_notes for noteId '{note_id}'")
+        # Build log message showing which identifiers are being updated
+        identifiers_msg = []
+        if patient_mrn:
+            identifiers_msg.append(f"MRN='{patient_mrn}'")
+        if patient_csn:
+            identifiers_msg.append(f"CSN='{patient_csn}'")
+        if patient_fin:
+            identifiers_msg.append(f"FIN='{patient_fin}'")
+        
+        identifiers_str = ", ".join(identifiers_msg) if identifiers_msg else "no identifiers found"
+        
+        add_log(job_id, "update_identifiers", "in_progress", 
+                f"Updating {identifiers_str} and dateOfServiceEpoch in tiamd_prod_clinical_notes for noteId '{note_id}'")
         
         # Parse to epoch only
         epoch_ms = parse_service_date_to_epoch(date_of_service)
@@ -269,22 +290,24 @@ def update_patient_mrn_in_clinical_notes(job_id: str, note_id: str, patient_mrn:
         update_df = pd.DataFrame([{
             'noteId': note_id,
             'patientMRN': patient_mrn,
+            'csn': patient_csn,
+            'fin': patient_fin,
             'dateOfServiceEpoch': epoch_ms
         }])
         
         update_result = update_from_dataframe(
             ES_INDEX_CLINICAL_NOTES,
             update_df,
-            fields_to_update=['patientMRN', 'dateOfServiceEpoch']
+            fields_to_update=['patientMRN', 'csn', 'fin', 'dateOfServiceEpoch']
         )
         
-        add_log(job_id, "update_mrn", "completed", 
-                f"patientMRN '{patient_mrn}' and dateOfServiceEpoch updated in tiamd_prod_clinical_notes for noteId '{note_id}'")
+        add_log(job_id, "update_identifiers", "completed", 
+                f"Patient identifiers ({identifiers_str}) and dateOfServiceEpoch updated in tiamd_prod_clinical_notes for noteId '{note_id}'")
         
         return True
         
     except Exception as e:
-        add_log(job_id, "update_mrn", "failed", f"Error updating patientMRN and dateOfServiceEpoch: {str(e)}")
+        add_log(job_id, "update_identifiers", "failed", f"Error updating patient identifiers and dateOfServiceEpoch: {str(e)}")
         return False
 
 
@@ -536,12 +559,14 @@ async def process_note_with_tracking(job_id: str, note_id: str):
             add_log(job_id, "fetch", "info", 
                     f"Location available in clinical_notes for fallback: '{location_name}'")
         
-        # Stage 3: Get note type from Elasticsearch document and extract patient MRN from rawdata
+        # Stage 3: Get note type from Elasticsearch document and extract patient identifiers from rawdata
         current_stage = "extraction"
         
         # Get raw noteType from the same Elasticsearch document (note_data)
         raw_note_type = note_data.get('noteType')
-        patient_mrn = None  # Initialize MRN variable
+        patient_mrn = ""  # Initialize identifier variables (empty strings, not None)
+        patient_csn = ""
+        patient_fin = ""
         
         if not raw_note_type:
             # Fallback: if noteType is not in the document, extract both note type AND MRN from rawdata
@@ -549,12 +574,16 @@ async def process_note_with_tracking(job_id: str, note_id: str):
                     "noteType not found in document, extracting note type and MRN from rawdata as fallback")
             from medical_notes.service.note_type_extractor import extract_note_type_and_mrn
             raw_note_type, patient_mrn = extract_note_type_and_mrn(rawdata)
+            # Also extract CSN and FIN separately
+            from medical_notes.service.note_type_extractor import extract_csn_with_regex_fallback, extract_fin_with_regex_fallback
+            patient_csn = extract_csn_with_regex_fallback(rawdata) or ""
+            patient_fin = extract_fin_with_regex_fallback(rawdata) or ""
         else:
-            # Note type exists in document, only extract MRN from rawdata
+            # Note type exists in document, extract all identifiers (MRN, CSN, FIN) from rawdata
             add_log(job_id, "extraction", "in_progress", 
-                    "Extracting patient MRN from rawdata using LLM")
-            from medical_notes.service.note_type_extractor import extract_mrn
-            patient_mrn = extract_mrn(rawdata)
+                    "Extracting patient identifiers (MRN, CSN, FIN) from rawdata using LLM")
+            from medical_notes.service.note_type_extractor import extract_identifiers
+            patient_mrn, patient_csn, patient_fin = extract_identifiers(rawdata)
         
         note_type = normalize_note_type(raw_note_type)
         
@@ -569,7 +598,7 @@ async def process_note_with_tracking(job_id: str, note_id: str):
             llm_issues = ["Note type extraction failed"]  # This could be LLM-related if using LLM fallback
             
             push_failed_record_to_processed_notes(
-                job_id, note_id, note_data, None, None, llm_issues
+                job_id, note_id, note_data, None, None, None, None, llm_issues
             )
             
             return {
@@ -587,25 +616,35 @@ async def process_note_with_tracking(job_id: str, note_id: str):
         
         processing_issues = []  # Only for LLM-related errors
         
-        if not patient_mrn:
+        # Log extraction results for all identifiers
+        identifiers_found = []
+        if patient_mrn:
+            identifiers_found.append(f"MRN: {patient_mrn}")
+        if patient_csn:
+            identifiers_found.append(f"CSN: {patient_csn}")
+        if patient_fin:
+            identifiers_found.append(f"FIN: {patient_fin}")
+        
+        if not identifiers_found:
             add_log(job_id, "extraction", "warning", 
-                    "Could not extract patient MRN - will continue without historical context")
-            # NOTE: MRN extraction failure is not an LLM processing error - it's handled gracefully
+                    "Could not extract any patient identifiers (MRN, CSN, FIN) - will continue without historical context")
+            # NOTE: Identifier extraction failure is not an LLM processing error - it's handled gracefully
         else:
+            identifiers_str = ", ".join(identifiers_found)
             add_log(job_id, "extraction", "completed", 
-                    f"Note type: {note_type}, Patient MRN: {patient_mrn}")
+                    f"Note type: {note_type}, Patient identifiers: {identifiers_str}")
             
-            # Update patientMRN with error handling
-            current_stage = "update_mrn"
+            # Update patient identifiers with error handling
+            current_stage = "update_identifiers"
             try:
-                mrn_updated = update_patient_mrn_in_clinical_notes(
-                    job_id, note_id, patient_mrn, date_of_service
+                identifiers_updated = update_patient_identifiers_in_clinical_notes(
+                    job_id, note_id, patient_mrn, patient_csn, patient_fin, date_of_service
                 )
                 
-                if not mrn_updated:
+                if not identifiers_updated:
                     return {
                         'success': False,
-                        'error': f"Failed to update patientMRN '{patient_mrn}' in tiamd_prod_clinical_notes",
+                        'error': f"Failed to update patient identifiers in tiamd_prod_clinical_notes",
                         'status_code': 500,  # Internal Server Error - ES update failed
                         'stage': current_stage,
                         'details': 'Elasticsearch update operation failed',
@@ -613,13 +652,13 @@ async def process_note_with_tracking(job_id: str, note_id: str):
                         'note_type': note_type,
                         'patient_mrn': patient_mrn
                     }
-            except Exception as mrn_error:
+            except Exception as identifiers_error:
                 return {
                     'success': False,
-                    'error': f"Exception while updating patientMRN: {str(mrn_error)}",
+                    'error': f"Exception while updating patient identifiers: {str(identifiers_error)}",
                     'status_code': 500,
                     'stage': current_stage,
-                    'details': str(mrn_error),
+                    'details': str(identifiers_error),
                     'note_data': note_data,
                     'note_type': note_type,
                     'patient_mrn': patient_mrn
@@ -704,7 +743,7 @@ async def process_note_with_tracking(job_id: str, note_id: str):
                 processing_tracker.mark_processing_end()
                 
                 push_failed_record_to_processed_notes(
-                    job_id, note_id, note_data, note_type, patient_mrn, processing_issues
+                    job_id, note_id, note_data, note_type, patient_mrn, patient_csn, patient_fin, processing_issues
                 )
                 
                 return {
@@ -744,8 +783,10 @@ async def process_note_with_tracking(job_id: str, note_id: str):
         from medical_notes.repository.elastic_search import df_to_es_load
 
         try:
-            # Add notes_digest to note_data so it's available for demographics extraction
+            # Add notes_digest, csn, and fin to note_data so they're available for demographics extraction and indexing
             note_data['notes_digest'] = notes_digest
+            note_data['csn'] = patient_csn
+            note_data['fin'] = patient_fin
             
             es_record = prepare_es_record(
                 note_data=note_data,

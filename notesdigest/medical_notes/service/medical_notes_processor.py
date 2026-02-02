@@ -750,6 +750,8 @@ def prepare_es_record(note_data, note_type, processed_text=None, processed_json=
         'noteId': int(note_data['noteId']) if str(note_data['noteId']).isdigit() else note_data['noteId'],
         'patientName': demographics.get('patient_name', ''),
         'patientmrn': demographics.get('patient_mrn', ''),
+        'csn': note_data.get('csn', ''),  # Contact Serial Number
+        'fin': note_data.get('fin', ''),  # Financial Number
         'location': demographics.get('location', ''),
         'admissionDate': demographics.get('admission_date', ''),
         'dateOfService': demographics.get('date_of_service', ''),
@@ -962,6 +964,8 @@ def index_to_elasticsearch(es_record: Dict[str, Any], notes_digest: str, note_ty
             'noteType': note_type,
             'patientName': es_record['patientName'],
             'patientmrn': es_record['patientmrn'],
+            'csn': es_record.get('csn', ''),
+            'fin': es_record.get('fin', ''),
             'ingestionDateTime': es_record['ingestionDateTime'],
             'processedDateTime': es_record['processedDateTime'],
         }

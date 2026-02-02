@@ -505,3 +505,233 @@ PATIENT_MRN: <complete_mrn_value>"""
         except Exception as regex_e:
             print(f"  ✗ Error extracting MRN with regex: {str(regex_e)}")
             return None
+
+
+def extract_csn_with_regex_fallback(raw_text):
+    """
+    Extract CSN (Contact Serial Number) using regex patterns as fallback when LLM extraction fails.
+    
+    Args:
+        raw_text: The full raw medical note text
+    
+    Returns:
+        str or None: Patient CSN if found, None otherwise
+    """
+    if not raw_text or not raw_text.strip():
+        return None
+    
+    # Define regex patterns for CSN extraction - require colon or specific context
+    csn_patterns = [
+        # Standard CSN patterns with colon requirement
+        r'CSN\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # CSN: followed by alphanumeric
+        r'csn\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # csn: followed by alphanumeric
+        r'Contact\s*Serial\s*Number\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # Full form with colon
+        r'Contact\s*Serial\s*No\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # Abbreviated form
+        # Patterns with dash
+        r'CSN\s*-\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # CSN - followed by alphanumeric
+        r'csn\s*-\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # csn - followed by alphanumeric
+    ]
+    
+    for pattern in csn_patterns:
+        match = re.search(pattern, raw_text, re.IGNORECASE)
+        if match:
+            csn = match.group(1).strip()
+            # Remove any trailing punctuation
+            csn = csn.rstrip('.,;:!?')
+            if csn:  # Ensure we have a non-empty CSN
+                print(f"  ✓ CSN extracted via regex: {csn}")
+                return csn
+    
+    print(f"  ⚠️ CSN not found via regex patterns")
+    return None
+
+
+def extract_fin_with_regex_fallback(raw_text):
+    """
+    Extract FIN (Financial Number) using regex patterns as fallback when LLM extraction fails.
+    
+    Args:
+        raw_text: The full raw medical note text
+    
+    Returns:
+        str or None: Patient FIN if found, None otherwise
+    """
+    if not raw_text or not raw_text.strip():
+        return None
+    
+    # Define regex patterns for FIN extraction - require colon or specific context
+    fin_patterns = [
+        # Standard FIN patterns with colon requirement
+        r'FIN\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # FIN: followed by alphanumeric
+        r'fin\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # fin: followed by alphanumeric
+        r'Financial\s*Number\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # Full form with colon
+        r'Financial\s*No\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # Abbreviated form
+        r'Account\s*Number\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # Alternative name
+        r'Account\s*No\s*:\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # Abbreviated alternative
+        # Patterns with dash
+        r'FIN\s*-\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # FIN - followed by alphanumeric
+        r'fin\s*-\s*([A-Za-z0-9]+)(?=\s|$|[^\w])',  # fin - followed by alphanumeric
+    ]
+    
+    for pattern in fin_patterns:
+        match = re.search(pattern, raw_text, re.IGNORECASE)
+        if match:
+            fin = match.group(1).strip()
+            # Remove any trailing punctuation
+            fin = fin.rstrip('.,;:!?')
+            if fin:  # Ensure we have a non-empty FIN
+                print(f"  ✓ FIN extracted via regex: {fin}")
+                return fin
+    
+    print(f"  ⚠️ FIN not found via regex patterns")
+    return None
+
+
+def extract_identifiers(raw_text, sample_fraction=0.25):
+    """
+    Extract patient identifiers (MRN, CSN, FIN) from raw medical text using LLM with regex fallback.
+    This is more efficient than calling separate extraction functions as it uses a single LLM call.
+    
+    Args:
+        raw_text: The full raw medical note text
+        sample_fraction: Fraction of text to use for extraction (0.25 = 25%)
+    
+    Returns:
+        tuple: (mrn, csn, fin) - each as string or empty string if not found
+    """
+    if not raw_text or not raw_text.strip():
+        return "", "", ""
+    
+    try:
+        # Sample from beginning (where identifiers typically appear)
+        sample_size = int(len(raw_text) * sample_fraction)
+        text_sample = raw_text[:sample_size]
+        
+        # Initialize Bedrock
+        bedrock = boto3.Session(
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("AWS_REGION", "us-east-1")
+        ).client("bedrock-runtime")
+        
+        # Combined prompt for all three identifiers
+        prompt = f"""Extract patient identifiers from this medical note.
+
+EXTRACTION RULES (return full values):
+1. MRN (Medical Record Number):
+   - Find the label "MRN:" or "MRN :" or "mrn:" in the text
+   - Extract ONLY the value immediately after "MRN:" up to (but not including) the next space
+   - The MRN can contain letters, numbers, and special characters - extract them all until you hit a space
+
+2. CSN (Contact Serial Number):
+   - Find the label "CSN:" or "CSN :" or "csn:" or "Contact Serial Number:" in the text
+   - Extract ONLY the value immediately after the label up to (but not including) the next space
+   - The CSN can contain letters, numbers, and special characters - extract them all until you hit a space
+
+3. FIN (Financial Number):
+   - Find the label "FIN:" or "FIN :" or "fin:" or "Financial Number:" or "Account Number:" in the text
+   - Extract ONLY the value immediately after the label up to (but not including) the next space
+   - The FIN can contain letters, numbers, and special characters - extract them all until you hit a space
+
+IMPORTANT:
+- Return ONLY the identifier values, nothing else
+- If an identifier is not found, return "NOT_FOUND" for that field
+- Do not include any explanation or extra text
+
+MEDICAL NOTE:
+{text_sample}
+
+Return ONLY in this exact format (no extra text):
+PATIENT_MRN: <complete_mrn_value>
+PATIENT_CSN: <complete_csn_value>
+PATIENT_FIN: <complete_fin_value>"""
+
+        # Call Bedrock with Claude Haiku
+        response = bedrock.invoke_model(
+            modelId=os.getenv("CLAUDE_HAIKU_4_5","us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,  # Enough for all three identifiers
+                "temperature": 0.1,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            })
+        )
+        
+        # Parse response
+        response_body = json.loads(response['body'].read())
+        response_text = response_body['content'][0]['text'].strip()
+        
+        # Track token usage
+        input_tokens, output_tokens = extract_token_usage_from_response(response_body)
+        add_token_usage("identifiers_extraction", input_tokens, output_tokens)
+        print(f"  📊 Token usage (identifiers): {input_tokens:,} in / {output_tokens:,} out")
+        
+        patient_mrn = ""
+        patient_csn = ""
+        patient_fin = ""
+        
+        for line in response_text.split('\n'):
+            line = line.strip()
+            if line.startswith('PATIENT_MRN:'):
+                mrn = line.split(':', 1)[1].strip()
+                mrn = mrn.rstrip('.,;:!? \t\n\r')
+                if mrn and mrn.upper() != 'NOT_FOUND':
+                    patient_mrn = mrn
+                    
+            elif line.startswith('PATIENT_CSN:'):
+                csn = line.split(':', 1)[1].strip()
+                csn = csn.rstrip('.,;:!? \t\n\r')
+                if csn and csn.upper() != 'NOT_FOUND':
+                    patient_csn = csn
+                    
+            elif line.startswith('PATIENT_FIN:'):
+                fin = line.split(':', 1)[1].strip()
+                fin = fin.rstrip('.,;:!? \t\n\r')
+                if fin and fin.upper() != 'NOT_FOUND':
+                    patient_fin = fin
+        
+        # Log results
+        print(f"  {'✓' if patient_mrn else '⚠️'} MRN (LLM): {patient_mrn or 'not found'}")
+        print(f"  {'✓' if patient_csn else '⚠️'} CSN (LLM): {patient_csn or 'not found'}")
+        print(f"  {'✓' if patient_fin else '⚠️'} FIN (LLM): {patient_fin or 'not found'}")
+        
+        # Try regex fallback for any missing identifiers
+        if not patient_mrn:
+            print(f"  🔄 Trying regex fallback for MRN extraction...")
+            regex_mrn = extract_mrn_with_regex_fallback(raw_text)
+            if regex_mrn:
+                patient_mrn = regex_mrn
+        
+        if not patient_csn:
+            print(f"  🔄 Trying regex fallback for CSN extraction...")
+            regex_csn = extract_csn_with_regex_fallback(raw_text)
+            if regex_csn:
+                patient_csn = regex_csn
+        
+        if not patient_fin:
+            print(f"  🔄 Trying regex fallback for FIN extraction...")
+            regex_fin = extract_fin_with_regex_fallback(raw_text)
+            if regex_fin:
+                patient_fin = regex_fin
+        
+        # Return empty strings for missing values (not None)
+        return patient_mrn or "", patient_csn or "", patient_fin or ""
+        
+    except Exception as e:
+        print(f"  ✗ Error extracting identifiers with LLM: {str(e)}")
+        print(f"  🔄 Trying regex fallback for all identifiers...")
+        
+        # If LLM fails completely, try regex fallback for all
+        try:
+            regex_mrn = extract_mrn_with_regex_fallback(raw_text) or ""
+            regex_csn = extract_csn_with_regex_fallback(raw_text) or ""
+            regex_fin = extract_fin_with_regex_fallback(raw_text) or ""
+            return regex_mrn, regex_csn, regex_fin
+        except Exception as regex_e:
+            print(f"  ✗ Error extracting identifiers with regex: {str(regex_e)}")
+            return "", "", ""
