@@ -4,6 +4,7 @@ app/services/rag/embeddings.py - Amazon Titan Embeddings
 Handles embeddings generation using AWS Bedrock and Amazon Titan.
 """
 
+import os
 import asyncio
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -43,25 +44,28 @@ class EmbeddingsClient:
         self.model_id = settings.EMBEDDINGS_MODEL
         self.region = settings.AWS_REGION
         
+        # Set credentials in environment as per verified pattern
+        if settings.AWS_ACCESS_KEY_ID:
+            os.environ['AWS_ACCESS_KEY_ID'] = settings.AWS_ACCESS_KEY_ID
+        if settings.AWS_SECRET_ACCESS_KEY:
+            os.environ['AWS_SECRET_ACCESS_KEY'] = settings.AWS_SECRET_ACCESS_KEY
+        os.environ['AWS_REGION'] = self.region
+        
         try:
-            # Initialize BedrockEmbeddings
-            if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
-                import boto3
-                bedrock_client = boto3.client(
-                    'bedrock-runtime',
-                    region_name=self.region,
-                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
-                )
-                self.embeddings = BedrockEmbeddings(
-                    client=bedrock_client,
-                    model_id=self.model_id
-                )
-            else:
-                self.embeddings = BedrockEmbeddings(
-                    region_name=self.region,
-                    model_id=self.model_id
-                )
+            # Initialize Bedrock client with explicit credentials
+            import boto3
+            bedrock_client = boto3.client(
+                service_name="bedrock-runtime",
+                region_name=self.region,
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
+            )
+
+            # Initialize BedrockEmbeddings with the explicit client
+            self.embeddings = BedrockEmbeddings(
+                model_id=self.model_id,
+                client=bedrock_client
+            )
             
             logger.info(f"Initialized embeddings client with model {self.model_id}")
             

@@ -80,7 +80,7 @@ class VectorStoreClient:
     def similarity_search_sync(
         self, 
         query: str, 
-        k: int = 4, 
+        k: int = 9, 
         filter: Optional[Dict] = None
     ) -> List[Any]:
         """
@@ -103,7 +103,7 @@ class VectorStoreClient:
     async def similarity_search(
         self, 
         query: str, 
-        k: int = 4, 
+        k: int = 9, 
         filter: Optional[Dict] = None
     ) -> List[Any]:
         """
@@ -139,10 +139,10 @@ class VectorStoreClient:
             Dict with success status and retrieved content
         """
         try:
-            # Perform similarity search
+            # Perform similarity search - Updated to k=9 per latest RAG requirement
             retrieved_docs = await self.similarity_search(
                 query=query,
-                k=4,
+                k=9,
                 filter=metadata
             )
             
@@ -171,38 +171,6 @@ class VectorStoreClient:
                 'error': f'Error retrieving context: {str(e)}'
             }
     
-    @staticmethod
-    def extract_metadata_from_question(question: str) -> Optional[Dict]:
-        """
-        Extract metadata from user question for filtering.
-        
-        Args:
-            question: User's question text
-            
-        Returns:
-            Dict with extracted metadata or None
-        """
-        metadata = {}
-        
-        # Extract MRN numbers (precise identifiers)
-        mrn_match = re.search(r"\bmrn\s*[:=]?\s*(\d+)", question, re.IGNORECASE)
-        if mrn_match:
-            metadata["patientMRN"] = mrn_match.group(1).zfill(6)
-        
-        # Extract note IDs (precise identifiers)
-        note_match = re.search(r"\bnote(?:id|_id)?\s*[:=]?\s*(\d+)", question, re.IGNORECASE)
-        if note_match:
-            metadata["noteId"] = note_match.group(1)
-        
-        # Extract dates (precise identifiers)
-        date_match = re.search(r"\b\d{2}-\d{2}-\d{4}\b", question)
-        if date_match:
-            metadata["serviceDate"] = date_match.group(0)
-        
-        # Note: Patient names are NOT filtered here - let vector similarity search handle names
-        # This allows for better matching of variations, nicknames, typos, and partial names
-        
-        return metadata if metadata else None
 
 
 # Singleton instance

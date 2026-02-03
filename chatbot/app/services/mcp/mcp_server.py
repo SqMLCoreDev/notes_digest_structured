@@ -268,19 +268,6 @@ class MCPServer:
                 return {'success': True, 'responses': results}
             
             # RAG Tools
-            elif tool_name == 'extract_metadata_from_question':
-                # Track RAG tool usage
-                self._tool_types_used.add('RAG')
-                logger.info(f"🔍 RAG TOOL: Extracting metadata from question")
-                
-                question = tool_input.get('question', '')
-                metadata = VectorStoreClient.extract_metadata_from_question(question)
-                
-                return {
-                    'success': True,
-                    'metadata': metadata
-                }
-            
             elif tool_name == 'retrieve_context':
                 # Track RAG tool usage
                 self._tool_types_used.add('RAG')
@@ -597,37 +584,60 @@ Select the most appropriate index from: {', '.join(indices)}
         
         # Smart data source routing with explicit user intent detection
         smart_routing_text = """
-** DETERMINISTIC DATA SOURCE ROUTING **
+** CLINICAL QA AGENT & DETERMINISTIC DATA SOURCE ROUTING **
 
-STEP 1: ANALYZE USER INTENT (Check for explicit keywords):
+You are a clinical QA agent. Your primary task is to answer user questions using retrieved clinical context.
 
- **RAG-ONLY MODE** - User explicitly requests raw data:
-- Trigger words: "raw data", "RAG", "vector search", "embeddings", "original notes", "unprocessed"
-- MANDATORY ACTION: Use ONLY RAG tools (`extract_metadata_from_question` → `retrieve_context`)
-- FORBIDDEN: Do NOT use any Elasticsearch tools when RAG mode is triggered
-- If RAG returns data: Present RAG results ONLY
-- If RAG returns empty: Inform user that raw data is not available for this query
+** RAG-ONLY MODE ** (Implicit clinical queries):
+- Trigger words: "raw data", "vector search", "original notes", "unprocessed", or any clinical question about a patient's history.
+- MANDATORY ACTION: Use ONLY the `retrieve_context` tool.
 
- **ELASTICSEARCH-ONLY MODE** - User requests analytics/counts:
+** Identifier rules (STRICT): **
+- The ONLY fields allowed as metadata filters are:
+  - serviceDate (MM-DD-YYYY only)
+  - patientMRN
+  - noteId
+  - fin
+  - csn
+- Use a metadata filter ONLY if the identifier is explicitly stated in the user question AND the value exactly matches the stored format.
+- Do NOT infer, normalize, or reformat identifiers.
+- Do NOT use patient names as metadata filters.
+- If no allowed identifier is explicitly present, do NOT apply any metadata filter.
+
+** RAG Process: **
+1. Read the user question.
+2. Decide whether any allowed identifier is explicitly present and exact.
+3. Build a metadata filter using ONLY those identifiers (or leave it empty).
+4. Call the `retrieve_context` tool with the original user question and the metadata filter (or null if empty).
+5. Answer ONLY using the retrieved context.
+
+** Clinical Rules: **
+- Never guess or invent metadata.
+- Never answer from prior knowledge.
+- If the information is not found in retrieved context, say so.
+- If the question contains only a patient name, still call the retrieval tool using semantic search with metadata = null.
+- Do not use markdown, headings (##), bold (**), or any special formatting in the final answer.
+- Do not add, infer, summarize, or restate any information that is not explicitly present in the retrieved context.
+
+** ELASTICSEARCH-ONLY MODE ** (Analytics/Counts):
 - Trigger words: "how many", "count", "total", "average", "statistics", "trends", "analytics", "aggregate"
 - MANDATORY ACTION: Use ONLY Elasticsearch tools
 - FORBIDDEN: Do NOT use RAG tools for analytics queries
 
- **AUTO-ROUTING MODE** - General patient queries (no explicit data source):
-- Examples: "get notes for John Doe", "show patient demographics", "find information about"
-- Strategy: Try Elasticsearch FIRST (faster, structured data)
-- Fallback: If Elasticsearch returns insufficient/empty results → try RAG tools
-- Present the FIRST successful result - do not combine sources
+ **AUTO-ROUTING MODE** - General patient queries:
+- Try Elasticsearch FIRST (faster, structured data).
+- Failover to RAG: If Elasticsearch returns 0 results OR sufficient information is not found in structured fields, use the `retrieve_context` tool following the process above.
+- Present the FIRST successful result - do not combine sources unless specifically requested.
 
 **CRITICAL ENFORCEMENT RULES:**
-1.  NEVER use both RAG and Elasticsearch in the same response
-2.  NEVER mix results from multiple data sources
-3.  Use the FIRST tool that returns data successfully
-4.  If user specifies a data source, respect that choice absolutely
-5.  NEVER ask user to choose data sources - route automatically
+1. NEVER use both RAG and Elasticsearch in the same response unless specifically asked to compare them.
+2. NEVER mix results from multiple data sources.
+3. Use the FIRST tool that returns data successfully.
+4. If user specifies a data source, respect that choice absolutely.
+5. Do not use markdown (bold, headers) in the final response.
 
 **EXECUTION SEQUENCE:**
-- RAG Mode: extract_metadata_from_question → retrieve_context → STOP
+- RAG Mode: retrieve_context → STOP
 - Analytics Mode: get_index_schema → elasticsearch_* tools → STOP  
 - Auto Mode: Try elasticsearch_* first → if empty, try RAG → STOP
 """
@@ -789,34 +799,21 @@ EXECUTION RULES:
                     "required": ["searches"]
                 }
             },
-            # RAG Tools for raw patient data retrieval
-            {
-                "name": "extract_metadata_from_question",
-                "description": " RAG TOOL: Extract metadata from questions about RAW PATIENT DATA ONLY. Use ONLY when user explicitly requests 'raw data', 'original notes', 'unprocessed data', or when in RAG-ONLY mode. This is the FIRST step for retrieving patient records from vector store. DO NOT use for analytics or count queries.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "question": {
-                            "type": "string",
-                            "description": "The user's question to extract metadata from"
-                        }
-                    },
-                    "required": ["question"]
-                }
-            },
+            # Unified RAG Tool
             {
                 "name": "retrieve_context",
-                "description": " RAG TOOL: Retrieve actual RAW PATIENT DATA from vector store. Use ONLY after extract_metadata_from_question and ONLY for raw data requests. This tool returns actual clinical content, patient records, and medical documentation from the vector database. DO NOT use for analytics, counts, or statistics.",
+                "description": "Retrieve raw patient records and notes from the vector store. This is a clinical QA tool. Use it to answer questions about a patient's medical history, status, or specific notes. Use semantic search on the query and apply metadata filters ONLY for exact matches of serviceDate, patientMRN, noteId, fin, or csn found in the question.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The query to search for relevant context"
+                            "description": "the original user question to search for in vector space"
                         },
                         "metadata": {
                             "type": "object",
-                            "description": "Optional metadata filters to apply during search (e.g., patient MRN, note ID, date filters)"
+                            "nullable": True,
+                            "description": "Optional strict metadata filters: { 'serviceDate': 'MM-DD-YYYY', 'patientMRN': '...', 'noteId': '...', 'fin': '...', 'csn': '...' }"
                         }
                     },
                     "required": ["query"]
