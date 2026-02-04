@@ -109,7 +109,9 @@ class MCPServer:
             'attestation': 'resident_attestation',
             'day by day': 'day_by_day_summary',
             'day-by-day': 'day_by_day_summary',
-            'daily summary': 'day_by_day_summary'
+            'daily summary': 'day_by_day_summary',
+            'op follow up': 'op_followup_visit',
+            'outpatient follow up': 'op_followup_visit'
         }
         
         sorted_keywords = sorted(template_keywords.keys(), key=len, reverse=True)
