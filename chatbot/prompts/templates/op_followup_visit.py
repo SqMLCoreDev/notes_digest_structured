@@ -10,32 +10,56 @@ OP_FOLLOWUP_VISIT_TEMPLATE = {
     "format_instructions": """
 You are preparing a formal OUTPATIENT FOLLOW-UP VISIT MEDICAL NOTE.
 
-CRITICAL FIRST STEP: INFORMATION CONSISTENCY ANALYSIS
+==========================================================================
+SECTION 0: INCONSISTENCY IDENTIFICATION (PRESENT BEFORE THE MEDICAL NOTE)
+==========================================================================
 
-BEFORE generating the note, you MUST:
+CRITICAL FIRST STEP: Before generating the note, you MUST compare the latest
+note for this patient with all previous information and identify any
+inconsistencies or conflicting details across the following three areas:
 
-Analyze the source document for inconsistencies, particularly in:
-- Medications: dosages mentioned in different sections
-- Imaging dates and findings: same study referenced with different details
-- Surgical dates and procedures: conflicting timelines
-- Symptom chronology: events described in different order
-- Clinical findings: exam findings vs. history descriptions
+1. History of Presenting Illness (HPI)
+2. Current Medications
+3. Assessment and Plans
 
-Resolve inconsistencies by prioritizing:
+FORMAT FOR PRESENTING INCONSISTENCIES:
+
+Inconsistency Identification Report
+------------------------------------
+
+HPI Inconsistencies:
+- Conflict: [Describe the conflicting details and which documents/notes they appear in]
+  Suggestion: [If a resolution can be identified from the provided information, state it here. Otherwise, flag for physician review.]
+
+Current Medication Inconsistencies:
+- Conflict: [Describe the conflicting details (e.g., dosage discrepancy, medication listed in one note but not another) and which documents/notes they appear in]
+  Suggestion: [If a resolution can be identified from the provided information, state it here. Otherwise, flag for physician review.]
+
+Assessment and Plan Inconsistencies:
+- Conflict: [Describe conflicting details between assessment/plan entries across notes]
+  Suggestion: [If a resolution can be identified from the provided information, state it here. Otherwise, flag for physician review.]
+
+RULES FOR THIS SECTION:
+- Present conflicts in an organised manner grouped by the three categories above
+- If a solution/resolution is identifiable within the given information, present it as a suggestion alongside the conflict
+- If no conflicts are found in a category, state: "No inconsistencies identified."
+- This section appears BEFORE the medical note begins
+- Do NOT include explanatory notes about how conflicts were resolved in the medical note itself; simply apply the resolution
+
+==========================================================================
+INFORMATION CONSISTENCY RESOLUTION (INTERNAL — NOT IN OUTPUT)
+==========================================================================
+
+After presenting the inconsistency report above, resolve conflicts internally
+using the following priority before generating the note:
+
 - HIGHEST PRIORITY: Information from the Assessment section (most recent clinical synthesis)
 - SECOND PRIORITY: Most recent date-stamped information
 - THIRD PRIORITY: Most specific/detailed information
-- Document conflicts: If irreconcilable, note: "conflicting reports suggest..."
-
-Specific consistency checks:
-- Medications: Use ONLY the dosages from "Current Medications" section or latest Assessment mention
-- Imaging findings: If same MRI mentioned multiple times, use most complete description
-- Dates: If event has multiple dates, use most specific date and note if uncertainty exists
-- Exam findings: Use findings from Physical Examination section, not historical mentions
 - Attribution: NEVER change who said/did something - preserve exact attribution from source
 - Cautious language: Keep hedging phrases like "supportive of," "consistent with," "appears to be" exactly as stated
 
-State in your analysis: "Consistency analysis performed. Resolved [X] discrepancies using Assessment section priority."
+State at the end of your inconsistency report: "Consistency analysis performed. Resolved [X] discrepancies. Applying resolutions to the note below."
 
 CRITICAL RULES FOR DATE HANDLING:
 - Use the most recent clinical encounter date from the Assessment section as the authoritative Date of Service
@@ -96,7 +120,7 @@ CASE SUMMARY
 This is a comprehensive chronological narrative. Write as flowing paragraphs with clear chronological progression.
 
 Opening Format:
-"[Mr./Ms. Name], a [age] y.o. [male/female], was evaluated at [clinic name] in follow up.
+"It was a pleasure to evaluate [Patient Name], a [Age] [Sex] at the [Location] in follow up.
 
 Case summary:
 [Begin comprehensive narrative here]"
@@ -173,7 +197,7 @@ Date Format Requirement:
 - Year only if more specific date unavailable: YYYY (e.g., "2025")
 - Include time when available: HH:MM AM/PM
 
-Formatting: 
+Formatting:
 - Write as flowing paragraphs (4-7 sentences per paragraph)
 - No bullet points in this section
 - Use transitional phrases
@@ -248,31 +272,9 @@ Note: Information here will eventually be consolidated into the Case Summary as 
 
 HISTORY
 
-Default Response:
-"Patient's past medical, social, family, and allergies history has been reviewed by me."
+"The following history sections were reviewed: Medical History, Social History, Family History and Allergies."
 
-CRITICAL: If detailed historical information is available in the source records, you may expand this section with specific details, but the default statement above should always be included.
-
-If Detailed Information Available, Include AFTER the default statement:
-
-Past Medical History:
-- [List of chronic conditions and resolved major illnesses]
-
-Past Surgical History:
-- [Procedures with dates in MM-DD-YYYY or MM-YYYY format]
-
-Social History:
-- Smoking: [Status]
-- Alcohol: [Use pattern]
-- Drugs: [Use pattern]
-- Occupation: [Current]
-- Living situation: [Details]
-
-Family History:
-- [Relevant hereditary conditions]
-
-Allergies:
-- [Allergen, reaction type, severity]
+CRITICAL RULE: Do NOT include any details under Medical History, Social History, Family History, or Allergies unless that specific information is explicitly stated in the previous neurology outpatient note. If the previous neurology outpatient note does not contain these details, do not expand this section beyond the statement above.
 
 MEDICATIONS
 
@@ -299,36 +301,9 @@ CRITICAL: Use ONLY the dosages from this section or latest Assessment mention wh
 
 REVIEW OF SYSTEMS
 
-For Neurology Specialty (adapt to relevant specialty as needed):
+All systems were reviewed and pertinent positives are included in the section on interim updates.
 
-CRITICAL FORMATTING RULES:
-- ONLY include systems with documented POSITIVE symptoms
-- Do NOT mention systems with no documented findings
-- Do NOT include phrases like "Not documented"
-- At the END of the section, add: "All other systems reviewed and negative."
-
-Neurological:
-- [Only include if positive findings: Headaches, dizziness, seizures, weakness, numbness, tingling]
-- [Only include if positive findings: Vision changes, hearing changes]
-- [Only include if positive findings: Balance problems, gait disturbances]
-- [Only include if positive findings: Memory issues, cognitive changes]
-- [Only include if positive findings: Speech difficulties]
-
-General Systems (only include systems with positive findings):
-- Constitutional: [Findings - only if positive]
-- Cardiovascular: [Findings - only if positive]
-- Respiratory: [Findings - only if positive]
-- Gastrointestinal: [Findings - only if positive]
-- Genitourinary: [Findings - only if positive]
-- Musculoskeletal: [Findings - only if positive]
-- Skin: [Findings - only if positive]
-- Psychiatric: [Findings - only if positive]
-- Endocrine: [Findings - only if positive]
-- Hematologic/Lymphatic: [Findings - only if positive]
-
-Final statement: "All other systems reviewed and negative."
-
-Formatting: Use hyphenated lists for positive findings only.
+CRITICAL RULE: This section contains ONLY the statement above. Do NOT list individual systems, positive or negative findings, or any other details in this section. All pertinent positive findings are documented within the Interim Updates section.
 
 PHYSICAL EXAM
 
@@ -347,29 +322,28 @@ CRITICAL: Do NOT include "Not documented" for missing vitals. Simply omit the li
 Note: If fetched by smartphrase, may state "Vitals as documented in EPIC flowsheet."
 
 General Examination:
-[Document general appearance, distress level, body habitus]
+[Document alert and oriented status (AAO x [number]) and whether the patient is in distress or not. Limit this section to these two elements only.]
 
 Neurological Examination:
 
 INSTRUCTION: Copy from the most recent note since neurological examination findings typically remain stable over extended periods.
 
 Structure:
-- GENERAL: awake, alert, distress level
-- HIGHER FUNCTIONS: orientation, language, knowledge
-- PSYCHIATRIC: mood, memory, attention
-- CRANIAL NERVES: organized by function
+- Higher Functions: [orientation, language, knowledge]
+- Psychiatric: [mood, memory, attention]
+- Cranial Nerves: [organized by function]
   - Cranial Nerves I-XII: [Document all systematically]
-- MOTOR SYSTEM:
+- Motor System:
   - Gait: [Describe casual, tandem, Romberg first]
   - Strength: [Use 0-5 scale with +/- modifiers, e.g., 4+/5]
   - Tone: [Document]
   - Bulk: [Document]
   - Movements: [Document]
   - Coordination: [Finger-to-nose, heel-to-shin]
-- SENSORY SYSTEM:
+- Sensory System:
   - By modality: [Pinprick, vibration, proprioception]
   - With anatomic distribution
-- REFLEXES:
+- Reflexes:
   - Grade 0-4 scale
   - Listed by anatomic location
   - Include pathological reflexes
@@ -481,6 +455,7 @@ Use the Assessment section as HIGHEST PRIORITY source. Note discrepancies when i
 
 Quality Verification:
 Before finalizing, verify:
+- Inconsistency Identification Report is presented before the medical note
 - Consistency analysis completed and conflicts resolved
 - All dates and timestamps are accurate and properly formatted (MM-DD-YYYY minimum)
 - Chronological consistency throughout the document
@@ -500,11 +475,13 @@ Before finalizing, verify:
 - Treatment trials clearly documented (attempt → outcome → reason for change)
 - NO asterisks, hashtags, or formatting symbols used anywhere in output
 - Problem names in Assessment written in plain text without formatting
-- Review of Systems includes only positive findings with final "All other systems reviewed and negative" statement
-- Vitals section omits any undocumented measurements
+- History section contains only the reviewed-sections statement unless details are in the previous neurology outpatient note
+- Review of Systems contains only the single prescribed statement; pertinent positives are in Interim Updates
+- General Examination is limited to AAO status and distress assessment only
+- Case Summary opens with "It was a pleasure to evaluate [Patient Name], a [Age] [Sex] at the [Location] in follow up."
 - Medication changes integrated naturally into Interim Updates narrative without separate subsection
 
 ---
-Begin your response with the section headers starting from "OUTPATIENT FOLLOW-UP VISIT MEDICAL NOTE" and populate all sections systematically following this exact structure.
+Begin your response with the Inconsistency Identification Report, followed by the medical note starting from "OUTPATIENT FOLLOW-UP VISIT MEDICAL NOTE." Populate all sections systematically following this exact structure.
 """
 }
