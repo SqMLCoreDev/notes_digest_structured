@@ -205,7 +205,7 @@ class MCPServer:
                     else:
                         logger.warning(f"⚠️ ELASTICSEARCH TOOL: No documents found in {index}")
                         # INJECT MANDATORY FALLBACK INSTRUCTION
-                        result['system_instruction'] = "ELASTICSEARCH FOUND 0 RESULTS. FALLBACK REQUIRED: You MUST now use the 'extract_metadata_from_question' tool to search via RAG. Do not answer 'Not Found' yet."
+                        result['system_instruction'] = "ELASTICSEARCH FOUND 0 RESULTS. CRITICAL: 1. If you have not yet searched 'tiamd_prod_clinical_notes' (raw data), YOU MUST SEARCH IT NOW. 2. Do NOT switch to 'retrieve_context' (RAG) until you have tried ALL available indices."
                 else:
                     error_msg = result.get('error', 'Unknown error')
                     logger.error(f"❌ ELASTICSEARCH TOOL: Search failed - {error_msg}")
@@ -450,7 +450,7 @@ class MCPServer:
         if len(sources_used) == 1:
             logger.info(f"📋 DATA SOURCES: Used {sources_used[0]} only ✅")
         else:
-            logger.warning(f"⚠️ DATA SOURCES: Mixed sources used - {', '.join(sources_used)} (should use only one!)")
+            logger.info(f"📋 DATA SOURCES: Mixed sources used - {', '.join(sources_used)} (Fallback occurred)")
     
     async def _generate_chart(self, question: str, answer: str) -> Optional[str]:
         """Generate chart visualization from Q&A (async)."""
@@ -595,10 +595,16 @@ Select the most appropriate index from: {', '.join(indices)}
         smart_routing_text = """
 ** CLINICAL QA AGENT & DETERMINISTIC DATA SOURCE ROUTING **
 
+** CRITICAL INSTRUCTION - READ THIS FIRST **
+The model MUST ALWAYS prioritize specific, structured search via Elasticsearch over RAG/Vector search.
+UNLESS the user explicitly mentions "RAG", "vector", "embeddings", or "semantic search", you MUST start with an Elasticsearch query (`elasticsearch_search`).
+Do NOT default to `retrieve_context` just because the question is open-ended.
+Try to find the answer in structured data FIRST.
+
 ** ROUTING LOGIC **
 
 **1. CHECK FOR EXPLICIT RAG TRIGGERS**
-   - Triggers: "rag", "embeddings", "vector search".
+   - Triggers: "rag", "embeddings", "vector search", "semantic search".
    - IF FOUND: Use `retrieve_context` tool immediately.
 
 **2. CHECK FOR EXPLICIT ANALYTICS TRIGGERS**
@@ -716,7 +722,7 @@ ROUTING STRATEGY:
 3.  Default to Elasticsearch-first for general queries
 
 EXECUTION RULES:
-- If RAG requested: Use RAG tools only.
+- If RAG requested: Use `retrieve_context` tool immediately.
 - If analytics requested: Use Elasticsearch tools only.
 - If general query:
   1. Start with Elasticsearch - try ALL available indices:
@@ -724,7 +730,7 @@ EXECUTION RULES:
      b. If no results or wrong patient, try tiamd_prod_clinical_notes (raw clinical data)
      c. You MUST try BOTH indices before moving to the next step
   2. Only after trying BOTH Elasticsearch indices with 0 results OR wrong patient:
-     **YOU MUST EXECUTE THE RAG TOOL (`extract_metadata_from_question`).**
+     **YOU MUST EXECUTE THE RAG TOOL (`retrieve_context`).**
   3. Do not say "Not Found" until you have tried: BOTH ES indices AND RAG.
   4. Final Answer: You may CONSOLIDATE information from both sources IF AND ONLY IF they refer to the SAME patient/ID.
 - Never mention data source types to user
@@ -753,7 +759,7 @@ EXECUTION RULES:
             },
             {
                 "name": "elasticsearch_search",
-                "description": " ELASTICSEARCH TOOL: Search structured data in Elasticsearch indices. Use for general patient queries, demographics, processed notes, and when RAG tools are not explicitly requested. DO NOT use when user specifically asks for 'raw data' or 'original notes'.",
+                "description": " ELASTICSEARCH TOOL: Search structured data in Elasticsearch indices. Use this as the PRIMARY search tool for all queries, including patient details, demographics, processed notes, and raw/original notes (if present in the index). Only avoid this if the query is purely analytics (use aggregate/count) or if RAG is explicitly forced.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
