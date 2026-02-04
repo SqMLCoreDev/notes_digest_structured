@@ -276,6 +276,15 @@ class MCPServer:
                 query = tool_input.get('query', '')
                 metadata = tool_input.get('metadata', None)
                 
+                # Validation: Ensure metadata is a dictionary
+                if isinstance(metadata, str):
+                    logger.warning(f"⚠️ RAG TOOL: Received string metadata '{metadata}', ignoring.")
+                    metadata = None
+                
+                if metadata and not isinstance(metadata, dict):
+                    logger.warning(f"⚠️ RAG TOOL: Invalid metadata type {type(metadata)}, ignoring.")
+                    metadata = None
+                
                 if not self.vector_store:
                     logger.error(f"❌ RAG TOOL: Vector store not configured")
                     return {
@@ -586,11 +595,36 @@ Select the most appropriate index from: {', '.join(indices)}
         smart_routing_text = """
 ** CLINICAL QA AGENT & DETERMINISTIC DATA SOURCE ROUTING **
 
-You are a clinical QA agent. Your primary task is to answer user questions using retrieved clinical context.
+** ROUTING LOGIC **
 
-** RAG-ONLY MODE ** (Implicit clinical queries):
-- Trigger words: "raw data", "vector search", "original notes", "unprocessed", or any clinical question about a patient's history.
-- MANDATORY ACTION: Use ONLY the `retrieve_context` tool.
+**1. CHECK FOR EXPLICIT RAG TRIGGERS**
+   - Triggers: "rag", "embeddings", "vector search".
+   - IF FOUND: Use `retrieve_context` tool immediately.
+
+**2. CHECK FOR EXPLICIT ANALYTICS TRIGGERS**
+   - Triggers: "how many", "count", "total", "average", "statistics", "trends".
+   - IF FOUND: Use `elasticsearch_aggregate` or `elasticsearch_count`.
+
+**3. DEFAULT: ALL OTHER QUESTIONS (Medications, Summaries, Patient Details, etc.)**
+   - **STEP A: Try Elasticsearch (`elasticsearch_search`)**
+     - You MUST start here for all standard questions.
+     - Search relevant indices for structured data.
+   
+   - **STEP B: Evaluate Elasticsearch Results**
+     - Did it return 0 documents?
+     - Did it return an error?
+     - Is the result "less" than expected or "not proper" (missing details)?
+   
+   - **STEP C: Fallback to RAG (`retrieve_context`)**
+     - YOU MUST USE RAG IF:
+       - Elasticsearch returned 0 results or an error.
+       - Elasticsearch content was insufficient to fully answer the question.
+     - When fallback is needed, use `retrieve_context` adhering to the rules below.
+
+** RAG-SPECIFIC INSTRUCTIONS (Active ONLY when using retrieve_context) **
+   *These rules apply to the retrieve_context tool usage, whether triggered explicitly (Step 1) or via fallback (Step 3).*
+
+Your task is to answer the user question using retrieved clinical context.
 
 ** Identifier rules (STRICT): **
 - The ONLY fields allowed as metadata filters are:
@@ -599,7 +633,8 @@ You are a clinical QA agent. Your primary task is to answer user questions using
   - noteId
   - fin
   - csn
-- Use a metadata filter ONLY if the identifier is explicitly stated in the user question AND the value exactly matches the stored format.
+- Use a metadata filter ONLY if the identifier is explicitly stated in the user question
+  AND the value exactly matches the stored format.
 - Do NOT infer, normalize, or reformat identifiers.
 - Do NOT use patient names as metadata filters.
 - If no allowed identifier is explicitly present, do NOT apply any metadata filter.
@@ -619,27 +654,6 @@ You are a clinical QA agent. Your primary task is to answer user questions using
 - Do not use markdown, headings (##), bold (**), or any special formatting in the final answer.
 - Do not add, infer, summarize, or restate any information that is not explicitly present in the retrieved context.
 
-** ELASTICSEARCH-ONLY MODE ** (Analytics/Counts):
-- Trigger words: "how many", "count", "total", "average", "statistics", "trends", "analytics", "aggregate"
-- MANDATORY ACTION: Use ONLY Elasticsearch tools
-- FORBIDDEN: Do NOT use RAG tools for analytics queries
-
- **AUTO-ROUTING MODE** - General patient queries:
-- Try Elasticsearch FIRST (faster, structured data).
-- Failover to RAG: If Elasticsearch returns 0 results OR sufficient information is not found in structured fields, use the `retrieve_context` tool following the process above.
-- Present the FIRST successful result - do not combine sources unless specifically requested.
-
-**CRITICAL ENFORCEMENT RULES:**
-1. NEVER use both RAG and Elasticsearch in the same response unless specifically asked to compare them.
-2. NEVER mix results from multiple data sources.
-3. Use the FIRST tool that returns data successfully.
-4. If user specifies a data source, respect that choice absolutely.
-5. Do not use markdown (bold, headers) in the final response.
-
-**EXECUTION SEQUENCE:**
-- RAG Mode: retrieve_context → STOP
-- Analytics Mode: get_index_schema → elasticsearch_* tools → STOP  
-- Auto Mode: Try elasticsearch_* first → if empty, try RAG → STOP
 """
         
         system_prompt = f"""You are an expert healthcare data analyst with access to healthcare data via Elasticsearch and RAG tools.
@@ -813,7 +827,7 @@ EXECUTION RULES:
                         "metadata": {
                             "type": "object",
                             "nullable": True,
-                            "description": "Optional strict metadata filters: { 'serviceDate': 'MM-DD-YYYY', 'patientMRN': '...', 'noteId': '...', 'fin': '...', 'csn': '...' }"
+                            "description": "Optional strict metadata filters: { 'serviceDate': 'MM-DD-YYYY', 'patientMRN': '...', 'noteId': '...', 'fin': '...', 'csn': '...' }. DO NOT pass the string 'None' or 'null' - use actual null value or omit the key."
                         }
                     },
                     "required": ["query"]
