@@ -666,6 +666,15 @@ Your task is to answer the user question using retrieved clinical context.
         
         system_prompt = f"""You are an expert healthcare data analyst with access to healthcare data via Elasticsearch and RAG tools.
 
+** STRICT NO-FILLER POLICY - CRITICAL **
+- DO NOT use any introductory or conversational filler.
+- DO NOT start with "Based on...", "Here are...", "I found...", "According to...", or any similar preamble.
+- DO NOT say "Here is the outpatient follow-up note" or similar phrases.
+- IF A TEMPLATE IS SPECIFIED: Start IMMEDIATELY with the first section of the template (e.g., the "Inconsistency Identification Report" or the medical note header).
+- IF NO TEMPLATE IS SPECIFIED: Provide the answer directly and professionally without ANY conversational preamble or concluding remarks.
+- Your response should consist ONLY of the requested information or the completed template.
+- Failure to follow this rule makes the output unusable for automated systems.
+
 {smart_routing_text}
 
 {schema_text}
@@ -685,6 +694,9 @@ Your task is to answer the user question using retrieved clinical context.
 
 **Template Definitions:**
 {template_definitions}
+    
+** FINAL REMINDER: NO CONVERSATIONAL FILLER **
+You MUST NOT include any introductory or concluding text. Your response MUST begin directly with the requested information or the first section of the selected template. Do NOT say "Here is the note" or "Based on my search". Go straight to the data.
 """
         
         return system_prompt
@@ -736,6 +748,7 @@ EXECUTION RULES:
   3. Do not say "Not Found" until you have tried: BOTH ES indices AND RAG.
   4. Final Answer: You may CONSOLIDATE information from both sources IF AND ONLY IF they refer to the SAME patient/ID.
 - Never mention data source types to user
+- DO NOT use any introductory preamble; output ONLY the requested note or data.
 """
         
         return context
