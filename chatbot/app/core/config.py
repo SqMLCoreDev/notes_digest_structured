@@ -64,7 +64,6 @@ class Settings(BaseSettings):
     ES_URL: Optional[str] = Field(default=None, description="Elasticsearch cluster URL")
     ES_USER: Optional[str] = Field(default=None, description="Elasticsearch username")
     ES_PASSWORD: Optional[str] = Field(default=None, description="Elasticsearch password")
-    ES_ENCODED_AUTH: Optional[str] = Field(default=None, description="Base64 encoded ES auth")
     
     # NotesDigest Elasticsearch indices
     ES_INDEX_CLINICAL_NOTES: Optional[str] = Field(default=None, description="Clinical notes index")

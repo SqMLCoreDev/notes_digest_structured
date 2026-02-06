@@ -34,7 +34,6 @@ MISTRAL_7_B = os.getenv("MISTRAL_7_B", "mistral.mistral-7b-instruct-v0:2")
 # ============================================================================
 
 ES_URL = os.getenv("ES_URL")
-ES_ENCODED_AUTH = os.getenv("ES_ENCODED_AUTH")
 ES_USER = os.getenv("ES_USER", "elastic")
 ES_PASSWORD = os.getenv("ES_PASSWORD")
 
@@ -45,9 +44,20 @@ ES_INDEX_PROCESSED_NOTES = os.getenv("ES_INDEX_PROCESSED_NOTES")
 ES_INDEX_NOTES_DIGEST = os.getenv("ES_INDEX_NOTES_DIGEST")
 ES_INDEX_TOKEN_USAGE = os.getenv("ES_INDEX_TOKEN_USAGE")
 
+def get_es_encoded_auth():
+    """
+    Generate Base64 encoded authentication string from ES_USER and ES_PASSWORD.
+    Returns None if credentials are not available.
+    """
+    if ES_USER and ES_PASSWORD:
+        import base64
+        credentials = f"{ES_USER}:{ES_PASSWORD}"
+        return base64.b64encode(credentials.encode()).decode()
+    return None
+
 # Create ES_HEADERS dictionary with proper authentication
 ES_HEADERS = {
-    "Authorization": f"Basic {ES_ENCODED_AUTH}" if ES_ENCODED_AUTH else "",
+    "Authorization": f"Basic {get_es_encoded_auth()}" if get_es_encoded_auth() else "",
     "Content-Type": "application/json"
 }
 
@@ -188,8 +198,8 @@ def validate_elasticsearch_config():
     except ValueError as e:
         errors.append(str(e))
     
-    if not ES_ENCODED_AUTH:
-        errors.append("ES_ENCODED_AUTH is required but not set")
+    if not ES_PASSWORD:
+        errors.append("ES_PASSWORD is required but not set")
     
     if not ES_USER:
         errors.append("ES_USER is required but not set")
@@ -338,7 +348,7 @@ def get_masked_config_summary() -> Dict[str, Any]:
         "claude_model": CLAUDE_HAIKU_4_5,
         "elasticsearch": {
             "url": ES_URL,
-            "encoded_auth": _mask_sensitive_value(ES_ENCODED_AUTH) if ES_ENCODED_AUTH else "NOT_SET",
+            "encoded_auth": _mask_sensitive_value(get_es_encoded_auth()) if get_es_encoded_auth() else "NOT_SET",
             "user": ES_USER,
             "password": _mask_sensitive_value(ES_PASSWORD) if ES_PASSWORD else "NOT_SET",
             "indices": {
