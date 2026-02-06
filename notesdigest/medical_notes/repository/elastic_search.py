@@ -12,9 +12,8 @@ from datetime import datetime
 import dateutil.parser
 from collections import deque
 
-from elasticsearch import helpers, Elasticsearch
-from elasticsearch.helpers import parallel_bulk
-from elasticsearch.helpers.errors import BulkIndexError
+from opensearchpy import OpenSearch, helpers
+from opensearchpy.helpers import parallel_bulk, BulkIndexError
 
 # Import the comprehensive flattening function
 from medical_notes.utils.data_flattening import flatten_all_nested_objects
@@ -108,13 +107,15 @@ def df_to_es_load(newdf, dataset_id):
     print("ingestionTS", ingestionTS)
     newdf["ingestionTS"] = ingestionTS
 
-    # Elasticsearch client setup
+    # OpenSearch client setup
     print("Connecting to:", ES_URL)
-    Parallel_ES_client = Elasticsearch(
+    Parallel_ES_client = OpenSearch(
         [ES_URL],
         http_auth=(ES_USER, ES_PASSWORD),
-        request_timeout=10000,
-        verify_certs=True
+        timeout=10000,
+        use_ssl=True,
+        verify_certs=False,
+        ssl_show_warn=False
     )
 
     print("10- {}".format(datetime.now()))

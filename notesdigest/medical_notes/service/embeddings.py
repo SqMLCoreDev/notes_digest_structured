@@ -13,8 +13,8 @@ from langchain_aws import BedrockEmbeddings, ChatBedrockConverse
 from langchain_postgres import PGVector
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
-from elasticsearch import Elasticsearch
-from elasticsearch.helpers import scan
+from opensearchpy import OpenSearch
+from opensearchpy.helpers import scan
 
 # Import configuration
 from medical_notes.config.config import (
@@ -217,13 +217,13 @@ class EmbeddingsService:
     def _initialize_components(self):
         """Initialize Elasticsearch, LLM, embeddings model, and vector store"""
         try:
-            # Initialize Elasticsearch client
-            self.es_client = Elasticsearch(
-                ES_URL,
+            # Initialize OpenSearch client
+            self.es_client = OpenSearch(
+                hosts=[{'host': ES_URL.replace('https://', '').replace('http://', ''), 'port': 443}],
                 http_auth=(ES_USER, ES_PASSWORD),
-                scheme="https",
-                port=443,
-                verify_certs=False
+                use_ssl=True,
+                verify_certs=False,
+                ssl_show_warn=False
             )
             
             # Set AWS credentials in environment for good measure

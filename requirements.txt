@@ -20,7 +20,7 @@ httpx>=0.26.0,<0.30.0
 requests>=2.31.0,<3.0.0
 
 # Elasticsearch/OpenSearch
-elasticsearch[async]>=7.17.0,<8.0.0
+opensearch-py>=2.0.0,<3.0.0
 
 # Environment Variables
 python-dotenv>=1.0.0,<2.0.0
