@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     # Vector Store & Embeddings Configuration
     # ===========================================
     POSTGRES_CONNECTION: Optional[str] = Field(
-        default="postgresql+psycopg://teleqcuser:LqXlObT4t4Y0g8H@3.21.212.7:5432/tiatelemdqc", 
+        default=None, 
         description="PostgreSQL connection string for PGVector (e.g., postgresql://user:pass@host:5432/db)"
     )
     COLLECTION_NAME: str = Field(
